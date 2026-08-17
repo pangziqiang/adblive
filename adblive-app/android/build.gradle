@@ -1,0 +1,12 @@
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url "https://api.xposed.info/" }
+    }
+}
+
+tasks.register("clean", Delete) {
+    delete(rootProject.layout.buildDirectory)
+}
+
