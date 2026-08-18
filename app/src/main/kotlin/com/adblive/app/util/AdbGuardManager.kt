@@ -3,7 +3,6 @@ package com.adblive.app.util
 import android.content.Context
 import android.util.Base64
 import android.util.Log
-import java.io.File
 
 object AdbGuardManager {
     private const val TAG = "ADBLive_Guard"
@@ -14,17 +13,33 @@ object AdbGuardManager {
     private const val PID_FILE = "/data/local/tmp/adblive_guard.pid"
     private const val DISABLED_FILE = "/data/adb/adblive_guard_disabled"
 
+    private const val STATE_CACHE_TTL_MS = 10_000L
+    @Volatile private var cachedRunning: Boolean? = null
+    @Volatile private var cachedAtMs = 0L
+
+    fun isScriptDeployed(): Boolean {
+        val now = System.currentTimeMillis()
+        cachedRunning?.let {
+            if (now - cachedAtMs < STATE_CACHE_TTL_MS) return it
+        }
+        val r = ShellUtils.executeSu("test -f " + SCRIPT_PATH + " && echo yes")
+        val deployed = r.isSuccess() && r.output.contains("yes")
+        cachedRunning = deployed
+        cachedAtMs = now
+        return deployed
+    }
+
+    fun invalidateStateCache() {
+        cachedRunning = null
+        cachedAtMs = 0L
+    }
+
     fun isGuardRunning(): Boolean {
         val r = ShellUtils.executeSu("cat " + PID_FILE + " 2>/dev/null")
         val pid = r.output.trim()
         if (pid.isEmpty()) return false
         val alive = ShellUtils.executeSu("kill -0 " + pid + " 2>&1; echo EXIT=$?")
         return alive.output.contains("EXIT=0")
-    }
-
-    fun isScriptDeployed(): Boolean {
-        val r = ShellUtils.executeSu("test -f " + SCRIPT_PATH + " && echo yes")
-        return r.isSuccess() && r.output.contains("yes")
     }
 
     fun deployAndStart(context: Context): Boolean {
@@ -40,6 +55,7 @@ object AdbGuardManager {
                 "setsid sh " + SCRIPT_PATH + " >/dev/null 2>&1 & " +
                 "echo deployed"
             val r = ShellUtils.executeSu(cmd, 3000)
+            invalidateStateCache()
             r.isSuccess() && r.output.contains("deployed")
         } catch (t: Throwable) {
             Log.e(TAG, "deploy failed: " + t.message)
@@ -54,6 +70,7 @@ object AdbGuardManager {
             "pkill -f " + SCRIPT_NAME + " 2>/dev/null; " +
             "rm -f " + SCRIPT_PATH
         )
+        invalidateStateCache()
         return r.isSuccess()
     }
 

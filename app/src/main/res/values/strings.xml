@@ -1,18 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">ADBLive</string>
-    <string name="xposed_description">Wireless ADB guardian — passive guard + active shield</string>
+    <string name="xposed_description">Wireless ADB guardian — passive watchdog + active shield</string>
+
     <string name="shield_label">Active Shield</string>
-    <string name="shield_active">Hooks activated</string>
-    <string name="shield_inactive">Not activated in LSPosed</string>
+    <string name="shield_active">Hooks active</string>
+    <string name="shield_inactive">Not enabled in LSPosed</string>
     <string name="root_label">Root Access</string>
     <string name="root_active">Granted</string>
     <string name="root_inactive">Unavailable</string>
-    <string name="guard_label">Passive Guard</string>
+    <string name="guard_label">Watchdog</string>
     <string name="guard_active">Guard running</string>
     <string name="guard_inactive">Stopped</string>
     <string name="adb_label">Wireless ADB</string>
     <string name="adb_active">Enabled</string>
     <string name="adb_inactive">Disabled</string>
     <string name="log_label">LOG</string>
+    <string name="refresh">Refresh</string>
+    <string name="status_checking">Checking…</string>
+    <string name="adb_detail_port">Listening port</string>
 </resources>
