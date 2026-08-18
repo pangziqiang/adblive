@@ -242,6 +242,7 @@
                         android:padding="16dp"
                         android:gravity="center_vertical">
                         <ImageView
+                            android:id="@+id/icGuard"
                             android:layout_width="40dp"
                             android:layout_height="40dp"
                             android:src="@drawable/ic_watchdog"
