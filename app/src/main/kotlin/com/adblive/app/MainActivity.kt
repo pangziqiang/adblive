@@ -49,6 +49,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var icRoot: ImageView
     private lateinit var icAdb: ImageView
     private lateinit var icGuard: ImageView
+    private lateinit var tvAboutDesc: TextView
+    private lateinit var tvAboutToggle: TextView
     private lateinit var progress: ProgressBar
     private lateinit var btnRefresh: ImageButton
     private lateinit var swipeRefresh: SwipeRefreshLayout
@@ -78,6 +80,8 @@ class MainActivity : AppCompatActivity() {
         tvLog = findViewById(R.id.tvLog)
         tvIp = findViewById(R.id.tvIp)
         tvPort = findViewById(R.id.tvPort)
+        tvAboutDesc = findViewById(R.id.tvAboutDesc)
+        tvAboutToggle = findViewById(R.id.tvAboutToggle)
         tvVersion = findViewById(R.id.tvVersion)
         chipXposed = findViewById(R.id.chipXposed)
         chipRoot = findViewById(R.id.chipRoot)
@@ -101,6 +105,8 @@ class MainActivity : AppCompatActivity() {
         swipeRefresh.setOnRefreshListener { refresh() }
         swipeRefresh.setColorSchemeColors(getColor(R.color.teal))
         tvIp.setOnClickListener { copyIp() }
+
+        tvAboutToggle.setOnClickListener { toggleAbout() }
 
         tvVersion.text = "ver " + BuildConfig.VERSION_NAME + " (code " + BuildConfig.VERSION_CODE + ")"
         appendLog("ADBLive started")
@@ -269,5 +275,14 @@ class MainActivity : AppCompatActivity() {
             }
         }.start()
     }
-}
 
+    private fun toggleAbout() {
+        if (tvAboutDesc.visibility == View.VISIBLE) {
+            tvAboutDesc.visibility = View.GONE
+            tvAboutToggle.text = getString(R.string.about_expand)
+        } else {
+            tvAboutDesc.visibility = View.VISIBLE
+            tvAboutToggle.text = getString(R.string.about_collapse)
+        }
+    }
+}

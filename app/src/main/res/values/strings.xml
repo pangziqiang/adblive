@@ -6,18 +6,32 @@
     <string name="conn_label">CONNECTION</string>
     <string name="ip_label">IP ADDRESS</string>
     <string name="port_label">FIXED PORT</string>
+
+    <string name="about_title">About</string>
+    <string name="about_expand">Show description</string>
+    <string name="about_collapse">Hide description</string>
+    <string name="about_desc">ADBLive keeps wireless ADB alive on your device. It combines two layers: Passive Guard only needs root and auto-restarts adbd if it dies, while Active Shield requires the LSPosed framework to block the system from stopping wireless ADB. The ADB port is fixed at 5555.</string>
+
     <string name="shield_label">Active Shield</string>
     <string name="shield_active">Hooks active</string>
     <string name="shield_inactive">Not enabled in LSPosed</string>
+    <string name="shield_desc">Needs the LSPosed framework; blocks the system from disabling wireless ADB or killing adbd.</string>
+
     <string name="root_label">Root Access</string>
     <string name="root_active">Granted</string>
     <string name="root_inactive">Unavailable</string>
-    <string name="guard_label">Watchdog</string>
+    <string name="root_desc">Shows whether root is currently granted to this app.</string>
+
+    <string name="guard_label">Passive Guard</string>
     <string name="guard_active">Guard running</string>
     <string name="guard_inactive">Stopped</string>
+    <string name="guard_desc">Only needs root; a background process restarts adbd if it is killed.</string>
+
     <string name="adb_label">Wireless ADB</string>
     <string name="adb_active">Enabled</string>
     <string name="adb_inactive">Disabled</string>
+    <string name="adb_desc">Turn wireless ADB on/off. The listening port is fixed at 5555.</string>
+
     <string name="log_label">LOG</string>
     <string name="refresh">Refresh</string>
     <string name="status_checking">Checking…</string>
