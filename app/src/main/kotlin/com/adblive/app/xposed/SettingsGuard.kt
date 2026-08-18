@@ -13,6 +13,10 @@ object SettingsGuard {
     private const val KEY = "adb_wifi_enabled"
     private val registeredSys = AtomicBoolean(false)
 
+    private fun shouldBlock(): Boolean {
+        return !Entry.isShieldDisabled()
+    }
+
     fun hookSystemServer(lpparam: LoadPackageParam) {
         if (!registeredSys.compareAndSet(false, true)) return
         Entry.log("SettingsGuard mounting system_server guards")
@@ -37,6 +41,7 @@ object SettingsGuard {
             try {
                 XposedHelpers.findAndHookMethod(clazz, "putInt", *sig, object : XC_MethodHook() {
                     override fun beforeHookedMethod(param: MethodHookParam) {
+                        if (!shouldBlock()) return
                         val name = param.args[1] as? String ?: return
                         val value = param.args[2] as? Int ?: return
                         if (name == KEY && value == 0) {
@@ -60,6 +65,7 @@ object SettingsGuard {
             try {
                 XposedHelpers.findAndHookMethod(clazz, "putString", *sig, object : XC_MethodHook() {
                     override fun beforeHookedMethod(param: MethodHookParam) {
+                        if (!shouldBlock()) return
                         val name = param.args[1] as? String ?: return
                         val value = param.args[2] as? String ?: return
                         if (name == KEY && isOff(value)) {
@@ -81,6 +87,7 @@ object SettingsGuard {
                 object : XC_MethodHook() {
                     override fun beforeHookedMethod(param: MethodHookParam) {
                         try {
+                            if (!shouldBlock()) return
                             val authority = param.args[1] as? String ?: return
                             val method = param.args[2] as? String ?: return
                             val name = param.args[3] as? String ?: return

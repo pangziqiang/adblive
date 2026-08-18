@@ -198,7 +198,6 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="@string/adb_desc"
-                        android:minLines="2"
                             android:textColor="@color/text_secondary"
                             android:textSize="11sp"
                             android:layout_marginTop="6dp" />
@@ -265,7 +264,6 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="@string/shield_desc"
-                        android:minLines="2"
                             android:textColor="@color/text_secondary"
                             android:textSize="11sp"
                             android:layout_marginTop="6dp" />
@@ -332,7 +330,6 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="@string/guard_desc"
-                        android:minLines="2"
                             android:textColor="@color/text_secondary"
                             android:textSize="11sp"
                             android:layout_marginTop="6dp" />
@@ -400,7 +397,6 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="@string/root_desc"
-                        android:minLines="2"
                             android:textColor="@color/text_secondary"
                             android:textSize="11sp"
                             android:layout_marginTop="6dp" />
@@ -467,7 +463,6 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="@string/boot_desc"
-                        android:minLines="2"
                             android:textColor="@color/text_secondary"
                             android:textSize="11sp"
                             android:layout_marginTop="6dp" />

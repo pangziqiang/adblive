@@ -30,6 +30,7 @@ object KillGuard {
                 XposedBridge.hookMethod(method, object : XC_MethodHook() {
                     override fun beforeHookedMethod(param: MethodHookParam) {
                         try {
+                            if (Entry.isShieldDisabled()) return
                             val pid = param.args[0] as? Int ?: return
                             if (isAdbd(pid)) {
                                 Entry.log("KillGuard blocked " + name + "(pid=" + pid + ")")
@@ -47,10 +48,11 @@ object KillGuard {
             val method = clazz.getDeclaredMethod("killProcessGroup",
                 Int::class.javaPrimitiveType, Int::class.javaPrimitiveType)
             XposedBridge.hookMethod(method, object : XC_MethodHook() {
-                override fun beforeHookedMethod(param: MethodHookParam) {
-                    try {
-                        val pid = param.args[1] as? Int ?: return
-                        if (isAdbd(pid)) {
+                    override fun beforeHookedMethod(param: MethodHookParam) {
+                        try {
+                            if (Entry.isShieldDisabled()) return
+                            val pid = param.args[1] as? Int ?: return
+                            if (isAdbd(pid)) {
                             Entry.log("KillGuard blocked killProcessGroup(pid=" + pid + ")")
                             param.setResult(0)
                         }
