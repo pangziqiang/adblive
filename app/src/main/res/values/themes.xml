@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.ADBLive" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:statusBarColor">#FF0A0E14</item>
+        <item name="android:navigationBarColor">#FF0A0E14</item>
+        <item name="android:windowBackground">#FF0A0E14</item>
+    </style>
+</resources>
