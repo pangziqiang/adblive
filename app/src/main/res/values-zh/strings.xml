@@ -7,6 +7,11 @@
     <string name="ip_label">IP 地址</string>
     <string name="port_label">固定端口</string>
 
+    <string name="boot_label">开机自启</string>
+    <string name="boot_active">开机启动</string>
+    <string name="boot_inactive">已关闭</string>
+    <string name="boot_desc">开机时自动部署守护进程并开启无线 ADB。</string>
+
     <string name="about_title">软件说明</string>
     <string name="about_expand">展开说明</string>
     <string name="about_collapse">收起说明</string>
