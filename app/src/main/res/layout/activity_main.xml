@@ -189,6 +189,8 @@
                                 android:layout_height="wrap_content"
                                 android:textOn=" "
                                 android:textOff=" "
+                                android:scaleX="0.72"
+                                android:scaleY="0.72"
                                 app:thumbTint="@color/teal"
                                 app:trackTint="@color/text_secondary" />
                         </LinearLayout>
@@ -320,6 +322,8 @@
                                 android:layout_height="wrap_content"
                                 android:textOn=" "
                                 android:textOff=" "
+                                android:scaleX="0.72"
+                                android:scaleY="0.72"
                                 app:thumbTint="@color/teal"
                                 app:trackTint="@color/text_secondary" />
                         </LinearLayout>
