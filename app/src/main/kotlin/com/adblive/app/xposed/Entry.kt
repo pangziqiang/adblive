@@ -43,10 +43,6 @@ class Entry : IXposedHookLoadPackage {
                 log("Hooking Settings proc=" + lpparam.processName)
                 SettingsGuard.hookSettings(lpparam)
             }
-            lpparam.packageName == "com.android.providers.settings" -> {
-                log("Hooking SettingsProvider proc=" + lpparam.processName)
-                SettingsGuard.hookSettings(lpparam)
-            }
         }
     }
 }
