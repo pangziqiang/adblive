@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">ADBLive</string>
-    <string name="xposed_description">无线 ADB 守护 — 被动看门 + 主动拦截</string>
+    <string name="xposed_description">无线 ADB 守护 — 被动守护 + 主动拦截</string>
 
     <string name="conn_label">连接信息</string>
     <string name="ip_label">IP 地址</string>
@@ -12,7 +12,7 @@
     <string name="root_label">Root 权限</string>
     <string name="root_active">已授权</string>
     <string name="root_inactive">不可用</string>
-    <string name="guard_label">被动看门</string>
+    <string name="guard_label">被动守护</string>
     <string name="guard_active">看门进程运行中</string>
     <string name="guard_inactive">已停止</string>
     <string name="adb_label">无线 ADB</string>

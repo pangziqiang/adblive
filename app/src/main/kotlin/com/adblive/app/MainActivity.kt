@@ -48,6 +48,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var icShield: ImageView
     private lateinit var icRoot: ImageView
     private lateinit var icAdb: ImageView
+    private lateinit var icGuard: ImageView
     private lateinit var progress: ProgressBar
     private lateinit var btnRefresh: ImageButton
     private lateinit var swipeRefresh: SwipeRefreshLayout
@@ -89,6 +90,7 @@ class MainActivity : AppCompatActivity() {
         icShield = findViewById(R.id.icShield)
         icRoot = findViewById(R.id.icRoot)
         icAdb = findViewById(R.id.icAdb)
+        icGuard = findViewById(R.id.icGuard)
         progress = findViewById(R.id.progress)
         btnRefresh = findViewById(R.id.btnRefresh)
         swipeRefresh = findViewById(R.id.swipeRefresh)
@@ -101,7 +103,7 @@ class MainActivity : AppCompatActivity() {
         tvIp.setOnClickListener { copyIp() }
 
         tvVersion.text = "ver " + BuildConfig.VERSION_NAME + " (code " + BuildConfig.VERSION_CODE + ")"
-        appendLog("ADBLive started v" + BuildConfig.VERSION_NAME)
+        appendLog("ADBLive started")
     }
 
     override fun onResume() {
@@ -184,6 +186,7 @@ class MainActivity : AppCompatActivity() {
                 tvGuard.text = if (guardOn) getString(R.string.guard_active) else getString(R.string.guard_inactive)
                 swGuard.isChecked = guardOn
                 cardGuard.strokeColor = getColor(if (guardOn) R.color.card_border_on else R.color.card_border_off)
+                tintCircle(icGuard, guardOn)
 
                 tvXposed.text = if (xposedOk) getString(R.string.shield_active) else getString(R.string.shield_inactive)
                 setChipText(chipXposed, if (xposedOk) "ON" else "OFF", xposedOk)
@@ -232,6 +235,7 @@ class MainActivity : AppCompatActivity() {
                 tvGuard.text = if (guardOn) getString(R.string.guard_active) else getString(R.string.guard_inactive)
                 swGuard.isChecked = guardOn
                 cardGuard.strokeColor = getColor(if (guardOn) R.color.card_border_on else R.color.card_border_off)
+                tintCircle(icGuard, guardOn)
             }
         }.start()
     }
