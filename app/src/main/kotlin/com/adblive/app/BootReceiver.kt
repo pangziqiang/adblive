@@ -12,6 +12,7 @@ class BootReceiver : BroadcastReceiver() {
         private const val TAG = "ADBLive_Boot"
         private const val PREFS = "adblive_guard"
         private const val KEY_GUARD_ENABLED = "guard_enabled"
+        private const val KEY_BOOT_ENABLED = "boot_enabled"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -19,11 +20,20 @@ class BootReceiver : BroadcastReceiver() {
             intent.action != Intent.ACTION_LOCKED_BOOT_COMPLETED) return
 
         // Only auto-start if user previously enabled the guard.
+        val bootEnabled = try {
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getBoolean(KEY_BOOT_ENABLED, true)
+        } catch (_: Throwable) { true }
+
         val wasEnabled = try {
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .getBoolean(KEY_GUARD_ENABLED, false)
         } catch (_: Throwable) { false }
 
+        if (!bootEnabled) {
+            Log.d(TAG, "boot: auto-start disabled, skip")
+            return
+        }
         if (!wasEnabled) {
             Log.d(TAG, "boot: guard not previously enabled, skip")
             return

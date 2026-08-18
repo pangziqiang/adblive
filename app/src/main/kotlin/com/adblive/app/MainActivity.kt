@@ -27,6 +27,8 @@ class MainActivity : AppCompatActivity() {
     private companion object {
         const val PREFS = "adblive_guard"
         const val KEY_GUARD_ENABLED = "guard_enabled"
+        const val KEY_BOOT_ENABLED = "boot_enabled"
+        const val KEY_ADB_ENABLED = "adb_enabled"
     }
 
     private lateinit var tvXposed: TextView
@@ -39,16 +41,20 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvVersion: TextView
     private lateinit var chipXposed: TextView
     private lateinit var chipRoot: TextView
+    private lateinit var tvBoot: TextView
+    private lateinit var swBoot: MaterialSwitch
     private lateinit var swGuard: MaterialSwitch
     private lateinit var swAdb: MaterialSwitch
     private lateinit var cardXposed: MaterialCardView
     private lateinit var cardRoot: MaterialCardView
     private lateinit var cardGuard: MaterialCardView
     private lateinit var cardAdb: MaterialCardView
+    private lateinit var cardBoot: MaterialCardView
     private lateinit var icShield: ImageView
     private lateinit var icRoot: ImageView
     private lateinit var icAdb: ImageView
     private lateinit var icGuard: ImageView
+    private lateinit var icBoot: ImageView
     private lateinit var tvAboutDesc: TextView
     private lateinit var tvAboutToggle: TextView
     private lateinit var progress: ProgressBar
@@ -85,22 +91,27 @@ class MainActivity : AppCompatActivity() {
         tvVersion = findViewById(R.id.tvVersion)
         chipXposed = findViewById(R.id.chipXposed)
         chipRoot = findViewById(R.id.chipRoot)
+        tvBoot = findViewById(R.id.tvBoot)
+        swBoot = findViewById(R.id.swBoot)
         swGuard = findViewById(R.id.swGuard)
         swAdb = findViewById(R.id.swAdb)
         cardXposed = findViewById(R.id.cardXposed)
         cardRoot = findViewById(R.id.cardRoot)
         cardGuard = findViewById(R.id.cardGuard)
         cardAdb = findViewById(R.id.cardAdb)
+        cardBoot = findViewById(R.id.cardBoot)
         icShield = findViewById(R.id.icShield)
         icRoot = findViewById(R.id.icRoot)
         icAdb = findViewById(R.id.icAdb)
         icGuard = findViewById(R.id.icGuard)
+        icBoot = findViewById(R.id.icBoot)
         progress = findViewById(R.id.progress)
         btnRefresh = findViewById(R.id.btnRefresh)
         swipeRefresh = findViewById(R.id.swipeRefresh)
 
         swGuard.setOnCheckedChangeListener { _, checked -> if (swGuard.isPressed) toggleGuard(checked) }
         swAdb.setOnCheckedChangeListener { _, checked -> if (swAdb.isPressed) toggleAdb(checked) }
+        swBoot.setOnCheckedChangeListener { _, checked -> if (swBoot.isPressed) toggleBoot(checked) }
         btnRefresh.setOnClickListener { refresh() }
         swipeRefresh.setOnRefreshListener { refresh() }
         swipeRefresh.setColorSchemeColors(getColor(R.color.teal))
@@ -184,6 +195,12 @@ class MainActivity : AppCompatActivity() {
                 ipText = ip
                 tvIp.text = ip.ifEmpty { "--" }
 
+                val bootPref = getPref(KEY_BOOT_ENABLED, true)
+                tvBoot.text = if (bootPref) getString(R.string.boot_active) else getString(R.string.boot_inactive)
+                swBoot.isChecked = bootPref
+                cardBoot.strokeColor = getColor(if (bootPref) R.color.card_border_on else R.color.card_border_off)
+                tintCircle(icBoot, bootPref)
+
                 tvAdb.text = if (adbOn) getString(R.string.adb_active) else getString(R.string.adb_inactive)
                 swAdb.isChecked = adbOn
                 cardAdb.strokeColor = getColor(if (adbOn) R.color.card_border_on else R.color.card_border_off)
@@ -251,7 +268,29 @@ class MainActivity : AppCompatActivity() {
             .edit().putBoolean(KEY_GUARD_ENABLED, enabled).apply()
     }
 
+    private fun setPref(key: String, enabled: Boolean) {
+        getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(key, enabled).apply()
+    }
+
+    private fun getPref(key: String, def: Boolean): Boolean {
+        return getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(key, def)
+    }
+
+    private fun toggleBoot(on: Boolean) {
+        setPref(KEY_BOOT_ENABLED, on)
+        runOnUiThread {
+            tvBoot.text = if (on) getString(R.string.boot_active) else getString(R.string.boot_inactive)
+            swBoot.isChecked = on
+            cardBoot.strokeColor = getColor(if (on) R.color.card_border_on else R.color.card_border_off)
+            tintCircle(icBoot, on)
+            appendLog("auto-start " + (if (on) "enabled" else "disabled"))
+        }
+    }
+
     private fun toggleAdb(on: Boolean) {
+        setPref(KEY_ADB_ENABLED, on)
         Thread {
             if (on) {
                 ShellUtils.executeSu("setprop service.adb.tcp.port 5555")

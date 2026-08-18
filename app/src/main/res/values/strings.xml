@@ -1,11 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">ADBLive</string>
-    <string name="xposed_description">Wireless ADB guardian — passive watchdog + active shield</string>
+    <string name="xposed_description">Wireless ADB guardian — passive watchpost + active shield</string>
 
     <string name="conn_label">CONNECTION</string>
     <string name="ip_label">IP ADDRESS</string>
     <string name="port_label">FIXED PORT</string>
+
+    <string name="boot_label">Auto Start</string>
+    <string name="boot_active">On at boot</string>
+    <string name="boot_inactive">Off</string>
+    <string name="boot_desc">On boot, deploy the guard and enable wireless ADB automatically.</string>
 
     <string name="about_title">About</string>
     <string name="about_expand">Show description</string>
