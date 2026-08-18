@@ -66,6 +66,57 @@
                 android:orientation="vertical"
                 android:padding="16dp">
 
+                <!-- About card (collapsible) -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardAbout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="14dp"
+                    app:cardBackgroundColor="@color/card_bg"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/card_border_off"
+                    app:strokeWidth="1dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/about_title"
+                                android:textColor="@color/text_primary"
+                                android:textSize="15sp"
+                                android:textStyle="bold" />
+                            <TextView
+                                android:id="@+id/tvAboutToggle"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/about_collapse"
+                                android:textColor="@color/teal"
+                                android:textSize="12sp"
+                                android:padding="4dp"
+                                android:background="?attr/selectableItemBackground" />
+                        </LinearLayout>
+                        <TextView
+                            android:id="@+id/tvAboutDesc"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/about_desc"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp"
+                            android:lineSpacingMultiplier="1.2"
+                            android:layout_marginTop="8dp" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
                 <!-- Connection info card: IP + fixed port on one row -->
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/cardConn"
@@ -199,6 +250,13 @@
                                 android:textColor="@color/text_secondary"
                                 android:textSize="13sp"
                                 android:layout_marginTop="2dp" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/adb_desc"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp"
+                                android:layout_marginTop="4dp" />
                         </LinearLayout>
                         <com.google.android.material.materialswitch.MaterialSwitch
                             android:id="@+id/swAdb"
@@ -256,6 +314,13 @@
                                 android:textColor="@color/text_secondary"
                                 android:textSize="13sp"
                                 android:layout_marginTop="2dp" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/guard_desc"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp"
+                                android:layout_marginTop="4dp" />
                         </LinearLayout>
                         <com.google.android.material.materialswitch.MaterialSwitch
                             android:id="@+id/swGuard"
@@ -313,6 +378,13 @@
                                 android:textColor="@color/text_secondary"
                                 android:textSize="13sp"
                                 android:layout_marginTop="2dp" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/shield_desc"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp"
+                                android:layout_marginTop="4dp" />
                         </LinearLayout>
                         <TextView
                             android:id="@+id/chipXposed"
@@ -373,6 +445,13 @@
                                 android:textColor="@color/text_secondary"
                                 android:textSize="13sp"
                                 android:layout_marginTop="2dp" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/root_desc"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp"
+                                android:layout_marginTop="4dp" />
                         </LinearLayout>
                         <TextView
                             android:id="@+id/chipRoot"

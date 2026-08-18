@@ -6,18 +6,32 @@
     <string name="conn_label">连接信息</string>
     <string name="ip_label">IP 地址</string>
     <string name="port_label">固定端口</string>
+
+    <string name="about_title">软件说明</string>
+    <string name="about_expand">展开说明</string>
+    <string name="about_collapse">收起说明</string>
+    <string name="about_desc">ADBLive 是一款无线 ADB 守护工具，确保设备上的无线 ADB 持续可用。它分两层保护：被动守护只需要 Root，负责在 adbd 被杀后自动将它重新拉起；主动守护则需要 LSPosed 框架，用来阻止系统关闭无线 ADB。ADB 端口固定为 5555。</string>
+
     <string name="shield_label">主动守护</string>
     <string name="shield_active">Hook 已生效</string>
     <string name="shield_inactive">未在 LSPosed 启用</string>
+    <string name="shield_desc">需要 LSPosed 框架；拦截系统关闭无线 ADB 或结束 adbd。</string>
+
     <string name="root_label">Root 权限</string>
     <string name="root_active">已授权</string>
     <string name="root_inactive">不可用</string>
+    <string name="root_desc">显示当前是否已对本软件授予 Root 权限。</string>
+
     <string name="guard_label">被动守护</string>
     <string name="guard_active">守护进程运行中</string>
     <string name="guard_inactive">已停止</string>
+    <string name="guard_desc">只需要 Root；后台进程在 adbd 被杀后会自动重新拉起。</string>
+
     <string name="adb_label">无线 ADB</string>
     <string name="adb_active">已启用</string>
     <string name="adb_inactive">已禁用</string>
+    <string name="adb_desc">开启/关闭无线 ADB，监听端口固定为 5555。</string>
+
     <string name="log_label">日志</string>
     <string name="refresh">刷新</string>
     <string name="status_checking">检测中…</string>
