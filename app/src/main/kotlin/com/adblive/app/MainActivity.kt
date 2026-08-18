@@ -27,9 +27,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvRoot: TextView
     private lateinit var tvGuard: TextView
     private lateinit var tvAdb: TextView
-    private lateinit var tvAdbDetail: TextView
     private lateinit var tvLog: TextView
     private lateinit var tvIp: TextView
+    private lateinit var tvPort: TextView
     private lateinit var chipXposed: TextView
     private lateinit var chipRoot: TextView
     private lateinit var swGuard: MaterialSwitch
@@ -53,6 +53,7 @@ class MainActivity : AppCompatActivity() {
     private var adbOn = false
     private var adbObserver: ContentObserver? = null
     private var refreshing = false
+    private var ipText = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,9 +67,9 @@ class MainActivity : AppCompatActivity() {
         tvRoot = findViewById(R.id.tvRoot)
         tvGuard = findViewById(R.id.tvGuard)
         tvAdb = findViewById(R.id.tvAdb)
-        tvAdbDetail = findViewById(R.id.tvAdbDetail)
         tvLog = findViewById(R.id.tvLog)
         tvIp = findViewById(R.id.tvIp)
+        tvPort = findViewById(R.id.tvPort)
         chipXposed = findViewById(R.id.chipXposed)
         chipRoot = findViewById(R.id.chipRoot)
         swGuard = findViewById(R.id.swGuard)
@@ -89,6 +90,8 @@ class MainActivity : AppCompatActivity() {
         btnRefresh.setOnClickListener { refresh() }
         swipeRefresh.setOnRefreshListener { refresh() }
         swipeRefresh.setColorSchemeColors(getColor(R.color.teal))
+
+        tvIp.setOnClickListener { copyIp() }
     }
 
     override fun onResume() {
@@ -125,6 +128,14 @@ class MainActivity : AppCompatActivity() {
         } catch (_: Exception) { "" }
     }
 
+    private fun copyIp() {
+        if (ipText.isEmpty()) return
+        val cm = getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                as android.content.ClipboardManager
+        cm.setPrimaryClip(android.content.ClipData.newPlainText("ip", ipText))
+        appendLog("IP copied: " + ipText)
+    }
+
     private fun refresh() {
         if (refreshing) return
         refreshing = true
@@ -144,8 +155,8 @@ class MainActivity : AppCompatActivity() {
                 swipeRefresh.isRefreshing = false
                 refreshing = false
 
+                ipText = ip
                 tvIp.text = ip.ifEmpty { "--" }
-                tvAdbDetail.text = getString(R.string.adb_detail_port) + ": 5555"
 
                 // ADB
                 tvAdb.text = if (adbOn) getString(R.string.adb_active) else getString(R.string.adb_inactive)
