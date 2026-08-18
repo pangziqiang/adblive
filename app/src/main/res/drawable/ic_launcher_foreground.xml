@@ -4,10 +4,24 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:fillColor="#FF0D9488"
-        android:pathData="M54,30 L78,54 L54,78 L30,54 Z" />
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M54,40 L66,54 L54,68 L42,54 Z" />
+    <group android:scaleX="1.0" android:scaleY="1.0" android:pivotX="54" android:pivotY="54">
+        <!-- shield body -->
+        <path
+            android:fillColor="#FF0D9488"
+            android:pathData="M54,28 L76,36 L76,52 C76,64.5 67,74.5 54,78 C41,74.5 32,64.5 32,52 L32,36 Z" />
+        <!-- inner shield cut -->
+        <path
+            android:fillColor="#FF0A1622"
+            android:pathData="M54,33 L71,39.4 L71,52 C71,61.4 64.3,68.9 54,71.8 C43.7,68.9 37,61.4 37,52 L37,39.4 Z" />
+        <!-- wifi arcs (teal) -->
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#FF7DE3D9"
+            android:strokeWidth="3"
+            android:strokeLineCap="round"
+            android:pathData="M44,58 C47.7,54 52.3,52.2 54,51.8 M42,53.5 C46.6,48 51.2,45.9 54,45.3 M40,49 C45.5,41.8 51.7,39.4 54,38.8" />
+        <path
+            android:fillColor="#FF7DE3D9"
+            android:pathData="M54,63 m-2.5,0 a2.5,2.5 0 1,1 5,0 a2.5,2.5 0 1,1 -5,0" />
+    </group>
 </vector>
