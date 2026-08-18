@@ -18,6 +18,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.adblive.app.util.AdbGuardManager
+import com.adblive.app.util.ShieldStateFile
 import com.adblive.app.util.ShellUtils
 import com.adblive.app.util.XposedStatus
 import java.net.NetworkInterface
@@ -29,6 +30,8 @@ class MainActivity : AppCompatActivity() {
         const val KEY_GUARD_ENABLED = "guard_enabled"
         const val KEY_BOOT_ENABLED = "boot_enabled"
         const val KEY_ADB_ENABLED = "adb_enabled"
+        const val KEY_SHIELD_ENABLED = "shield_enabled"
+        const val SHIELD_OFF_FILE = "/data/local/tmp/adblive_shield_off"
     }
 
     private lateinit var tvXposed: TextView
@@ -39,10 +42,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvIp: TextView
     private lateinit var tvPort: TextView
     private lateinit var tvVersion: TextView
-    private lateinit var chipXposed: TextView
     private lateinit var chipRoot: TextView
     private lateinit var tvBoot: TextView
+    private lateinit var tvShield: TextView
     private lateinit var swBoot: MaterialSwitch
+    private lateinit var swShield: MaterialSwitch
     private lateinit var swGuard: MaterialSwitch
     private lateinit var swAdb: MaterialSwitch
     private lateinit var cardXposed: MaterialCardView
@@ -65,6 +69,7 @@ class MainActivity : AppCompatActivity() {
     private val handler = Handler(Looper.getMainLooper())
     private var rootOk = false
     private var xposedOk = false
+    private var shieldOn = false
     private var guardOn = false
     private var adbOn = false
     private var adbObserver: ContentObserver? = null
@@ -89,9 +94,10 @@ class MainActivity : AppCompatActivity() {
         tvAboutDesc = findViewById(R.id.tvAboutDesc)
         tvAboutToggle = findViewById(R.id.tvAboutToggle)
         tvVersion = findViewById(R.id.tvVersion)
-        chipXposed = findViewById(R.id.chipXposed)
         chipRoot = findViewById(R.id.chipRoot)
         tvBoot = findViewById(R.id.tvBoot)
+        tvShield = findViewById(R.id.tvXposed)
+        swShield = findViewById(R.id.swShield)
         swBoot = findViewById(R.id.swBoot)
         swGuard = findViewById(R.id.swGuard)
         swAdb = findViewById(R.id.swAdb)
@@ -111,6 +117,7 @@ class MainActivity : AppCompatActivity() {
 
         swGuard.setOnCheckedChangeListener { _, checked -> if (swGuard.isPressed) toggleGuard(checked) }
         swAdb.setOnCheckedChangeListener { _, checked -> if (swAdb.isPressed) toggleAdb(checked) }
+        swShield.setOnCheckedChangeListener { _, checked -> if (swShield.isPressed) toggleShield(checked) }
         swBoot.setOnCheckedChangeListener { _, checked -> if (swBoot.isPressed) toggleBoot(checked) }
         btnRefresh.setOnClickListener { refresh() }
         swipeRefresh.setOnRefreshListener { refresh() }
@@ -183,6 +190,7 @@ class MainActivity : AppCompatActivity() {
 
             rootOk = rootNow
             xposedOk = xposedNow
+            shieldOn = !ShieldStateFile.exists() && getPref(KEY_SHIELD_ENABLED, true)
             adbOn = adbNow
             guardOn = guardDeployed && guardRunning
 
@@ -211,10 +219,19 @@ class MainActivity : AppCompatActivity() {
                 cardGuard.strokeColor = getColor(if (guardOn) R.color.card_border_on else R.color.card_border_off)
                 tintCircle(icGuard, guardOn)
 
-                tvXposed.text = if (xposedOk) getString(R.string.shield_active) else getString(R.string.shield_inactive)
-                setChipText(chipXposed, if (xposedOk) "ON" else "OFF", xposedOk)
-                cardXposed.strokeColor = getColor(if (xposedOk) R.color.card_border_on else R.color.card_border_off)
-                tintCircle(icShield, xposedOk)
+                val prefShield = getPref(KEY_SHIELD_ENABLED, true)
+                val shieldActual = ShieldStateFile.exists()
+                val shieldUi = prefShield && !shieldActual
+                tvShield.text = when {
+                    !prefShield -> getString(R.string.shield_inactive)
+                    shieldActual -> getString(R.string.shield_inactive)
+                    xposedOk -> getString(R.string.shield_active)
+                    else -> getString(R.string.shield_inactive)
+                }
+                swShield.isChecked = shieldUi
+                shieldOn = shieldUi
+                cardXposed.strokeColor = getColor(if (shieldUi) R.color.card_border_on else R.color.card_border_off)
+                tintCircle(icShield, shieldUi)
 
                 tvRoot.text = if (rootOk) getString(R.string.root_active) else getString(R.string.root_inactive)
                 setChipText(chipRoot, if (rootOk) "OK" else "--", rootOk)
@@ -287,6 +304,27 @@ class MainActivity : AppCompatActivity() {
             tintCircle(icBoot, on)
             appendLog("auto-start " + (if (on) "enabled" else "disabled"))
         }
+    }
+
+    private fun toggleShield(on: Boolean) {
+        setPref(KEY_SHIELD_ENABLED, on)
+        Thread {
+            if (on) {
+                ShieldStateFile.enable()
+                shieldOn = true
+                runOnUiThread { appendLog("active shield on (blocks disable)") }
+            } else {
+                ShieldStateFile.disable()
+                shieldOn = false
+                runOnUiThread { appendLog("active shield off (adb may be toggled)") }
+            }
+            runOnUiThread {
+                tvShield.text = if (on) getString(R.string.shield_active) else getString(R.string.shield_inactive)
+                swShield.isChecked = on
+                cardXposed.strokeColor = getColor(if (on) R.color.card_border_on else R.color.card_border_off)
+                tintCircle(icShield, on)
+            }
+        }.start()
     }
 
     private fun toggleAdb(on: Boolean) {
