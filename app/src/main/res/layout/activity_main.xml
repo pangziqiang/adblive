@@ -15,14 +15,27 @@
         android:paddingHorizontal="16dp"
         app:contentInsetStartWithNavigation="0dp">
 
-        <TextView
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="ADBLive"
-            android:textColor="@color/teal"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:letterSpacing="0.03" />
+            android:orientation="vertical">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ADBLive"
+                android:textColor="@color/teal"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.03" />
+            <TextView
+                android:id="@+id/tvVersion"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textColor="@color/text_secondary"
+                android:textSize="10sp"
+                android:fontFamily="monospace" />
+        </LinearLayout>
 
         <View
             android:layout_width="0dp"
@@ -98,7 +111,6 @@
                             android:orientation="horizontal"
                             android:layout_marginTop="10dp">
 
-                            <!-- IP -->
                             <LinearLayout
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
@@ -128,7 +140,6 @@
                                 android:layout_height="40dp"
                                 android:background="@color/card_border_off" />
 
-                            <!-- Port -->
                             <LinearLayout
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
@@ -417,7 +428,7 @@
                             android:textSize="11sp"
                             android:fontFamily="monospace"
                             android:layout_marginTop="8dp"
-                            android:maxLines="10" />
+                            android:maxLines="12" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 

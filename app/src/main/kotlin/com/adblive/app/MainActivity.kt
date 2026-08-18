@@ -1,5 +1,6 @@
 package com.adblive.app
 
+import android.content.Context
 import android.database.ContentObserver
 import android.os.Bundle
 import android.os.Handler
@@ -23,6 +24,11 @@ import java.net.NetworkInterface
 
 class MainActivity : AppCompatActivity() {
 
+    private companion object {
+        const val PREFS = "adblive_guard"
+        const val KEY_GUARD_ENABLED = "guard_enabled"
+    }
+
     private lateinit var tvXposed: TextView
     private lateinit var tvRoot: TextView
     private lateinit var tvGuard: TextView
@@ -30,6 +36,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvLog: TextView
     private lateinit var tvIp: TextView
     private lateinit var tvPort: TextView
+    private lateinit var tvVersion: TextView
     private lateinit var chipXposed: TextView
     private lateinit var chipRoot: TextView
     private lateinit var swGuard: MaterialSwitch
@@ -70,6 +77,7 @@ class MainActivity : AppCompatActivity() {
         tvLog = findViewById(R.id.tvLog)
         tvIp = findViewById(R.id.tvIp)
         tvPort = findViewById(R.id.tvPort)
+        tvVersion = findViewById(R.id.tvVersion)
         chipXposed = findViewById(R.id.chipXposed)
         chipRoot = findViewById(R.id.chipRoot)
         swGuard = findViewById(R.id.swGuard)
@@ -90,8 +98,10 @@ class MainActivity : AppCompatActivity() {
         btnRefresh.setOnClickListener { refresh() }
         swipeRefresh.setOnRefreshListener { refresh() }
         swipeRefresh.setColorSchemeColors(getColor(R.color.teal))
-
         tvIp.setOnClickListener { copyIp() }
+
+        tvVersion.text = "ver " + BuildConfig.VERSION_NAME + " (code " + BuildConfig.VERSION_CODE + ")"
+        appendLog("ADBLive started v" + BuildConfig.VERSION_NAME)
     }
 
     override fun onResume() {
@@ -130,8 +140,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun copyIp() {
         if (ipText.isEmpty()) return
-        val cm = getSystemService(android.content.Context.CLIPBOARD_SERVICE)
-                as android.content.ClipboardManager
+        val cm = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
         cm.setPrimaryClip(android.content.ClipData.newPlainText("ip", ipText))
         appendLog("IP copied: " + ipText)
     }
@@ -143,11 +152,20 @@ class MainActivity : AppCompatActivity() {
         progress.visibility = View.VISIBLE
         Thread {
             val ip = getLocalIp()
-            rootOk = ShellUtils.probeRoot()
-            xposedOk = XposedStatus.isActive(this)
-            guardOn = AdbGuardManager.isScriptDeployed() && AdbGuardManager.isGuardRunning()
-            val adbR = ShellUtils.executeSu("getprop service.adb.tcp.port")
-            adbOn = adbR.isSuccess() && adbR.output.trim() == "5555"
+            val rootNow = ShellUtils.probeRoot()
+            val xposedNow = XposedStatus.isActive(this)
+            val guardDeployed = AdbGuardManager.isScriptDeployed()
+            val guardRunning = AdbGuardManager.isGuardRunning()
+
+            // Preserve old values so we can log transitions.
+            val rootChanged = rootNow != rootOk
+            val adbPortOut = ShellUtils.executeSu("getprop service.adb.tcp.port")
+            val adbNow = adbPortOut.isSuccess() && adbPortOut.output.trim() == "5555"
+
+            rootOk = rootNow
+            xposedOk = xposedNow
+            adbOn = adbNow
+            guardOn = guardDeployed && guardRunning
 
             runOnUiThread {
                 progress.visibility = View.GONE
@@ -158,28 +176,30 @@ class MainActivity : AppCompatActivity() {
                 ipText = ip
                 tvIp.text = ip.ifEmpty { "--" }
 
-                // ADB
                 tvAdb.text = if (adbOn) getString(R.string.adb_active) else getString(R.string.adb_inactive)
                 swAdb.isChecked = adbOn
                 cardAdb.strokeColor = getColor(if (adbOn) R.color.card_border_on else R.color.card_border_off)
                 tintCircle(icAdb, adbOn)
 
-                // Guard
                 tvGuard.text = if (guardOn) getString(R.string.guard_active) else getString(R.string.guard_inactive)
                 swGuard.isChecked = guardOn
                 cardGuard.strokeColor = getColor(if (guardOn) R.color.card_border_on else R.color.card_border_off)
 
-                // Xposed
                 tvXposed.text = if (xposedOk) getString(R.string.shield_active) else getString(R.string.shield_inactive)
                 setChipText(chipXposed, if (xposedOk) "ON" else "OFF", xposedOk)
                 cardXposed.strokeColor = getColor(if (xposedOk) R.color.card_border_on else R.color.card_border_off)
                 tintCircle(icShield, xposedOk)
 
-                // Root
                 tvRoot.text = if (rootOk) getString(R.string.root_active) else getString(R.string.root_inactive)
                 setChipText(chipRoot, if (rootOk) "OK" else "--", rootOk)
                 cardRoot.strokeColor = getColor(if (rootOk) R.color.card_border_on else R.color.card_border_off)
                 tintCircle(icRoot, rootOk)
+
+                if (rootChanged) {
+                    appendLog("root " + (if (rootOk) "granted" else "lost"))
+                }
+                appendLog("guard: script=" + (if (guardDeployed) "ok" else "none") +
+                          " run=" + (if (guardRunning) "yes" else "no"))
             }
         }.start()
     }
@@ -197,11 +217,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun toggleGuard(on: Boolean) {
+        setGuardEnabled(this, on)
         Thread {
             if (on) {
                 val ok = AdbGuardManager.deployAndStart(this)
                 guardOn = ok
-                runOnUiThread { appendLog(if (ok) "guard deployed" else "guard deploy failed") }
+                runOnUiThread { appendLog("guard " + (if (ok) "deployed & started" else "deploy failed")) }
             } else {
                 AdbGuardManager.stopAndRemove()
                 guardOn = false
@@ -215,17 +236,22 @@ class MainActivity : AppCompatActivity() {
         }.start()
     }
 
+    private fun setGuardEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_GUARD_ENABLED, enabled).apply()
+    }
+
     private fun toggleAdb(on: Boolean) {
         Thread {
             if (on) {
                 ShellUtils.executeSu("setprop service.adb.tcp.port 5555")
                 ShellUtils.executeSu("settings put global adb_wifi_enabled 1")
                 ShellUtils.executeSu("stop adbd && start adbd")
-                runOnUiThread { appendLog("adb enabling") }
+                runOnUiThread { appendLog("adb enabling on port 5555") }
             } else {
                 ShellUtils.executeSu("setprop service.adb.tcp.port 0")
                 ShellUtils.executeSu("settings put global adb_wifi_enabled 0")
-                runOnUiThread { appendLog("adb disabling") }
+                runOnUiThread { appendLog("adb disabled") }
             }
             Thread.sleep(1000)
             val adbR = ShellUtils.executeSu("getprop service.adb.tcp.port")
@@ -235,6 +261,7 @@ class MainActivity : AppCompatActivity() {
                 swAdb.isChecked = adbOn
                 cardAdb.strokeColor = getColor(if (adbOn) R.color.card_border_on else R.color.card_border_off)
                 tintCircle(icAdb, adbOn)
+                appendLog("adb port now " + (adbR.output.trim().ifEmpty { "0" }))
             }
         }.start()
     }
