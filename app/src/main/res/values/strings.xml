@@ -3,6 +3,9 @@
     <string name="app_name">ADBLive</string>
     <string name="xposed_description">Wireless ADB guardian — passive watchdog + active shield</string>
 
+    <string name="conn_label">CONNECTION</string>
+    <string name="ip_label">IP ADDRESS</string>
+    <string name="port_label">FIXED PORT</string>
     <string name="shield_label">Active Shield</string>
     <string name="shield_active">Hooks active</string>
     <string name="shield_inactive">Not enabled in LSPosed</string>
@@ -18,5 +21,4 @@
     <string name="log_label">LOG</string>
     <string name="refresh">Refresh</string>
     <string name="status_checking">Checking…</string>
-    <string name="adb_detail_port">Listening port</string>
 </resources>

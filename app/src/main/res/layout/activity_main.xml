@@ -12,7 +12,7 @@
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
         android:background="@color/bg_dark"
-        android:paddingHorizontal="8dp"
+        android:paddingHorizontal="16dp"
         app:contentInsetStartWithNavigation="0dp">
 
         <TextView
@@ -29,20 +29,10 @@
             android:layout_height="1dp"
             android:layout_weight="1" />
 
-        <TextView
-            android:id="@+id/tvIp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text=""
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp"
-            android:fontFamily="monospace" />
-
         <ImageButton
             android:id="@+id/btnRefresh"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:layout_marginStart="8dp"
             android:src="@drawable/ic_refresh"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/refresh"
@@ -76,9 +66,9 @@
                 android:orientation="vertical"
                 android:padding="16dp">
 
-                <!-- ADB status hero -->
+                <!-- Connection info card: IP + fixed port on one row -->
                 <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/cardAdb"
+                    android:id="@+id/cardConn"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="14dp"
@@ -92,58 +82,134 @@
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
                         android:padding="18dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/conn_label"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="11sp"
+                            android:textStyle="bold"
+                            android:letterSpacing="0.1" />
+
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"
-                            android:gravity="center_vertical">
-                            <ImageView
-                                android:id="@+id/icAdb"
-                                android:layout_width="44dp"
-                                android:layout_height="44dp"
-                                android:src="@drawable/ic_wifi"
-                                android:background="@drawable/bg_icon_circle_off"
-                                android:padding="10dp" />
+                            android:layout_marginTop="10dp">
+
+                            <!-- IP -->
                             <LinearLayout
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:orientation="vertical"
-                                android:layout_marginStart="14dp">
+                                android:gravity="center_horizontal">
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="@string/adb_label"
-                                    android:textColor="@color/text_primary"
-                                    android:textSize="16sp"
-                                    android:textStyle="bold" />
-                                <TextView
-                                    android:id="@+id/tvAdb"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="@string/status_checking"
+                                    android:text="@string/ip_label"
                                     android:textColor="@color/text_secondary"
-                                    android:textSize="13sp"
+                                    android:textSize="11sp" />
+                                <TextView
+                                    android:id="@+id/tvIp"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="--"
+                                    android:textColor="@color/on_teal_container"
+                                    android:textSize="18sp"
+                                    android:textStyle="bold"
+                                    android:fontFamily="monospace"
                                     android:layout_marginTop="2dp" />
                             </LinearLayout>
-                            <com.google.android.material.materialswitch.MaterialSwitch
-                                android:id="@+id/swAdb"
+
+                            <View
+                                android:layout_width="1dp"
+                                android:layout_height="40dp"
+                                android:background="@color/card_border_off" />
+
+                            <!-- Port -->
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:gravity="center_horizontal">
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="@string/port_label"
+                                    android:textColor="@color/text_secondary"
+                                    android:textSize="11sp" />
+                                <TextView
+                                    android:id="@+id/tvPort"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="5555"
+                                    android:textColor="@color/on_teal_container"
+                                    android:textSize="18sp"
+                                    android:textStyle="bold"
+                                    android:fontFamily="monospace"
+                                    android:layout_marginTop="2dp" />
+                            </LinearLayout>
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- ADB status hero -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardAdb"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="14dp"
+                    app:cardBackgroundColor="@color/card_bg"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/card_border_off"
+                    app:strokeWidth="1dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:padding="16dp"
+                        android:gravity="center_vertical">
+                        <ImageView
+                            android:id="@+id/icAdb"
+                            android:layout_width="44dp"
+                            android:layout_height="44dp"
+                            android:src="@drawable/ic_wifi"
+                            android:background="@drawable/bg_icon_circle_off"
+                            android:padding="10dp" />
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:layout_marginStart="14dp">
+                            <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:textOn=" "
-                                android:textOff=" "
-                                app:thumbTint="@color/teal"
-                                app:trackTint="@color/text_secondary" />
+                                android:text="@string/adb_label"
+                                android:textColor="@color/text_primary"
+                                android:textSize="16sp"
+                                android:textStyle="bold" />
+                            <TextView
+                                android:id="@+id/tvAdb"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/status_checking"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="13sp"
+                                android:layout_marginTop="2dp" />
                         </LinearLayout>
-                        <TextView
-                            android:id="@+id/tvAdbDetail"
-                            android:layout_width="match_parent"
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/swAdb"
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text=""
-                            android:textColor="@color/text_secondary"
-                            android:textSize="12sp"
-                            android:fontFamily="monospace"
-                            android:layout_marginTop="10dp" />
+                            android:textOn=" "
+                            android:textOff=" "
+                            app:thumbTint="@color/teal"
+                            app:trackTint="@color/text_secondary" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
