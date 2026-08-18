@@ -15,27 +15,14 @@
         android:paddingHorizontal="16dp"
         app:contentInsetStartWithNavigation="0dp">
 
-        <LinearLayout
+        <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="ADBLive"
-                android:textColor="@color/teal"
-                android:textSize="20sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.03" />
-            <TextView
-                android:id="@+id/tvVersion"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text=""
-                android:textColor="@color/text_secondary"
-                android:textSize="10sp"
-                android:fontFamily="monospace" />
-        </LinearLayout>
+            android:text="ADBLive"
+            android:textColor="@color/teal"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.03" />
 
         <View
             android:layout_width="0dp"
@@ -436,5 +423,18 @@
             </LinearLayout>
         </androidx.core.widget.NestedScrollView>
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+
+    <TextView
+        android:id="@+id/tvVersion"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textColor="@color/text_secondary"
+        android:textSize="11sp"
+        android:fontFamily="monospace"
+        android:gravity="center"
+        android:paddingTop="4dp"
+        android:paddingBottom="8dp" />
 
 </LinearLayout>

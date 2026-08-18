@@ -13,7 +13,7 @@
     <string name="root_active">已授权</string>
     <string name="root_inactive">不可用</string>
     <string name="guard_label">被动守护</string>
-    <string name="guard_active">看门进程运行中</string>
+    <string name="guard_active">守护进程运行中</string>
     <string name="guard_inactive">已停止</string>
     <string name="adb_label">无线 ADB</string>
     <string name="adb_active">已启用</string>
