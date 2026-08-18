@@ -14,7 +14,6 @@
         android:background="@color/bg_dark"
         android:paddingHorizontal="16dp"
         app:contentInsetStartWithNavigation="0dp">
-
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -23,12 +22,10 @@
             android:textSize="20sp"
             android:textStyle="bold"
             android:letterSpacing="0.03" />
-
         <View
             android:layout_width="0dp"
             android:layout_height="1dp"
             android:layout_weight="1" />
-
         <ImageButton
             android:id="@+id/btnRefresh"
             android:layout_width="40dp"
@@ -53,27 +50,25 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1">
-
         <androidx.core.widget.NestedScrollView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:fillViewport="true"
             android:scrollbars="none">
-
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="12dp">
 
                 <!-- Connection info -->
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/cardConn"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="14dp"
+                    android:layout_marginBottom="8dp"
                     app:cardBackgroundColor="@color/card_bg_alt"
-                    app:cardCornerRadius="20dp"
+                    app:cardCornerRadius="16dp"
                     app:cardElevation="0dp"
                     app:strokeColor="@color/card_border_off"
                     app:strokeWidth="1dp">
@@ -81,82 +76,76 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="18dp">
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/conn_label"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="11sp"
-                            android:textStyle="bold"
-                            android:letterSpacing="0.1" />
+                        android:padding="12dp">
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"
-                            android:layout_marginTop="10dp">
-                            <LinearLayout
+                            android:gravity="center_vertical">
+                            <TextView
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:orientation="vertical"
-                                android:gravity="center_horizontal">
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="@string/ip_label"
-                                    android:textColor="@color/text_secondary"
-                                    android:textSize="11sp" />
-                                <TextView
-                                    android:id="@+id/tvIp"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="--"
-                                    android:textColor="@color/on_teal_container"
-                                    android:textSize="18sp"
-                                    android:textStyle="bold"
-                                    android:fontFamily="monospace"
-                                    android:layout_marginTop="2dp" />
-                            </LinearLayout>
+                                android:text="@string/conn_label"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp"
+                                android:textStyle="bold"
+                                android:letterSpacing="0.1" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/ip_label"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/port_label"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp"
+                                android:layout_marginStart="32dp" />
+                        </LinearLayout>
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginTop="2dp"
+                            android:gravity="center_vertical">
                             <View
-                                android:layout_width="1dp"
-                                android:layout_height="40dp"
-                                android:background="@color/card_border_off" />
-                            <LinearLayout
                                 android:layout_width="0dp"
+                                android:layout_height="1dp"
+                                android:layout_weight="1" />
+                            <TextView
+                                android:id="@+id/tvIp"
+                                android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:orientation="vertical"
-                                android:gravity="center_horizontal">
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="@string/port_label"
-                                    android:textColor="@color/text_secondary"
-                                    android:textSize="11sp" />
-                                <TextView
-                                    android:id="@+id/tvPort"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="5555"
-                                    android:textColor="@color/on_teal_container"
-                                    android:textSize="18sp"
-                                    android:textStyle="bold"
-                                    android:fontFamily="monospace"
-                                    android:layout_marginTop="2dp" />
-                            </LinearLayout>
+                                android:text="--"
+                                android:textColor="@color/on_teal_container"
+                                android:textSize="16sp"
+                                android:textStyle="bold"
+                                android:fontFamily="monospace" />
+                            <TextView
+                                android:id="@+id/tvPort"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="5555"
+                                android:textColor="@color/on_teal_container"
+                                android:textSize="16sp"
+                                android:textStyle="bold"
+                                android:fontFamily="monospace"
+                                android:layout_marginStart="36dp" />
                         </LinearLayout>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- ADB card: row1 = label + status, row2 = desc -->
+                <!-- ADB card -->
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/cardAdb"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="10dp"
+                    android:layout_marginBottom="8dp"
                     app:cardBackgroundColor="@color/card_bg"
-                    app:cardCornerRadius="20dp"
+                    app:cardCornerRadius="16dp"
                     app:cardElevation="0dp"
                     app:strokeColor="@color/card_border_off"
                     app:strokeWidth="1dp">
@@ -164,7 +153,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="16dp">
+                        android:padding="12dp">
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -172,20 +161,20 @@
                             android:gravity="center_vertical">
                             <ImageView
                                 android:id="@+id/icAdb"
-                                android:layout_width="44dp"
-                                android:layout_height="44dp"
+                                android:layout_width="36dp"
+                                android:layout_height="36dp"
                                 android:src="@drawable/ic_wifi"
                                 android:background="@drawable/bg_icon_circle_off"
-                                android:padding="10dp" />
+                                android:padding="8dp" />
                             <TextView
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:text="@string/adb_label"
                                 android:textColor="@color/text_primary"
-                                android:textSize="16sp"
+                                android:textSize="15sp"
                                 android:textStyle="bold"
-                                android:layout_marginStart="14dp" />
+                                android:layout_marginStart="12dp" />
                             <TextView
                                 android:id="@+id/tvAdb"
                                 android:layout_width="wrap_content"
@@ -193,7 +182,7 @@
                                 android:text="@string/status_checking"
                                 android:textColor="@color/text_secondary"
                                 android:textSize="13sp"
-                                android:layout_marginEnd="12dp" />
+                                android:layout_marginEnd="10dp" />
                             <com.google.android.material.materialswitch.MaterialSwitch
                                 android:id="@+id/swAdb"
                                 android:layout_width="wrap_content"
@@ -209,7 +198,7 @@
                             android:text="@string/adb_desc"
                             android:textColor="@color/text_secondary"
                             android:textSize="11sp"
-                            android:layout_marginTop="10dp" />
+                            android:layout_marginTop="6dp" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -218,9 +207,9 @@
                     android:id="@+id/cardXposed"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="10dp"
+                    android:layout_marginBottom="8dp"
                     app:cardBackgroundColor="@color/card_bg"
-                    app:cardCornerRadius="20dp"
+                    app:cardCornerRadius="16dp"
                     app:cardElevation="0dp"
                     app:strokeColor="@color/card_border_off"
                     app:strokeWidth="1dp">
@@ -228,7 +217,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="16dp">
+                        android:padding="12dp">
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -236,11 +225,11 @@
                             android:gravity="center_vertical">
                             <ImageView
                                 android:id="@+id/icShield"
-                                android:layout_width="40dp"
-                                android:layout_height="40dp"
+                                android:layout_width="36dp"
+                                android:layout_height="36dp"
                                 android:src="@drawable/ic_shield"
                                 android:background="@drawable/bg_icon_circle_off"
-                                android:padding="9dp" />
+                                android:padding="8dp" />
                             <TextView
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
@@ -249,7 +238,7 @@
                                 android:textColor="@color/text_primary"
                                 android:textSize="15sp"
                                 android:textStyle="bold"
-                                android:layout_marginStart="14dp" />
+                                android:layout_marginStart="12dp" />
                             <TextView
                                 android:id="@+id/tvXposed"
                                 android:layout_width="wrap_content"
@@ -257,13 +246,13 @@
                                 android:text="@string/status_checking"
                                 android:textColor="@color/text_secondary"
                                 android:textSize="13sp"
-                                android:layout_marginEnd="12dp" />
+                                android:layout_marginEnd="10dp" />
                             <TextView
                                 android:id="@+id/chipXposed"
                                 android:layout_width="wrap_content"
-                                android:layout_height="26dp"
+                                android:layout_height="24dp"
                                 android:gravity="center"
-                                android:paddingHorizontal="12dp"
+                                android:paddingHorizontal="10dp"
                                 android:text="?"
                                 android:textColor="@color/chip_inactive_text"
                                 android:textSize="11sp"
@@ -276,7 +265,7 @@
                             android:text="@string/shield_desc"
                             android:textColor="@color/text_secondary"
                             android:textSize="11sp"
-                            android:layout_marginTop="10dp" />
+                            android:layout_marginTop="6dp" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -285,9 +274,9 @@
                     android:id="@+id/cardGuard"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="10dp"
+                    android:layout_marginBottom="8dp"
                     app:cardBackgroundColor="@color/card_bg"
-                    app:cardCornerRadius="20dp"
+                    app:cardCornerRadius="16dp"
                     app:cardElevation="0dp"
                     app:strokeColor="@color/card_border_off"
                     app:strokeWidth="1dp">
@@ -295,7 +284,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="16dp">
+                        android:padding="12dp">
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -303,11 +292,11 @@
                             android:gravity="center_vertical">
                             <ImageView
                                 android:id="@+id/icGuard"
-                                android:layout_width="40dp"
-                                android:layout_height="40dp"
+                                android:layout_width="36dp"
+                                android:layout_height="36dp"
                                 android:src="@drawable/ic_watchdog"
                                 android:background="@drawable/bg_icon_circle_off"
-                                android:padding="9dp" />
+                                android:padding="8dp" />
                             <TextView
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
@@ -316,7 +305,7 @@
                                 android:textColor="@color/text_primary"
                                 android:textSize="15sp"
                                 android:textStyle="bold"
-                                android:layout_marginStart="14dp" />
+                                android:layout_marginStart="12dp" />
                             <TextView
                                 android:id="@+id/tvGuard"
                                 android:layout_width="wrap_content"
@@ -324,7 +313,7 @@
                                 android:text="@string/status_checking"
                                 android:textColor="@color/text_secondary"
                                 android:textSize="13sp"
-                                android:layout_marginEnd="12dp" />
+                                android:layout_marginEnd="10dp" />
                             <com.google.android.material.materialswitch.MaterialSwitch
                                 android:id="@+id/swGuard"
                                 android:layout_width="wrap_content"
@@ -340,7 +329,7 @@
                             android:text="@string/guard_desc"
                             android:textColor="@color/text_secondary"
                             android:textSize="11sp"
-                            android:layout_marginTop="10dp" />
+                            android:layout_marginTop="6dp" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -349,9 +338,9 @@
                     android:id="@+id/cardRoot"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="14dp"
+                    android:layout_marginBottom="8dp"
                     app:cardBackgroundColor="@color/card_bg"
-                    app:cardCornerRadius="20dp"
+                    app:cardCornerRadius="16dp"
                     app:cardElevation="0dp"
                     app:strokeColor="@color/card_border_off"
                     app:strokeWidth="1dp">
@@ -359,7 +348,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="16dp">
+                        android:padding="12dp">
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -367,11 +356,11 @@
                             android:gravity="center_vertical">
                             <ImageView
                                 android:id="@+id/icRoot"
-                                android:layout_width="40dp"
-                                android:layout_height="40dp"
+                                android:layout_width="36dp"
+                                android:layout_height="36dp"
                                 android:src="@drawable/ic_key"
                                 android:background="@drawable/bg_icon_circle_off"
-                                android:padding="9dp" />
+                                android:padding="8dp" />
                             <TextView
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
@@ -380,7 +369,7 @@
                                 android:textColor="@color/text_primary"
                                 android:textSize="15sp"
                                 android:textStyle="bold"
-                                android:layout_marginStart="14dp" />
+                                android:layout_marginStart="12dp" />
                             <TextView
                                 android:id="@+id/tvRoot"
                                 android:layout_width="wrap_content"
@@ -388,13 +377,13 @@
                                 android:text="@string/status_checking"
                                 android:textColor="@color/text_secondary"
                                 android:textSize="13sp"
-                                android:layout_marginEnd="12dp" />
+                                android:layout_marginEnd="10dp" />
                             <TextView
                                 android:id="@+id/chipRoot"
                                 android:layout_width="wrap_content"
-                                android:layout_height="26dp"
+                                android:layout_height="24dp"
                                 android:gravity="center"
-                                android:paddingHorizontal="12dp"
+                                android:paddingHorizontal="10dp"
                                 android:text="?"
                                 android:textColor="@color/chip_inactive_text"
                                 android:textSize="11sp"
@@ -407,7 +396,7 @@
                             android:text="@string/root_desc"
                             android:textColor="@color/text_secondary"
                             android:textSize="11sp"
-                            android:layout_marginTop="10dp" />
+                            android:layout_marginTop="6dp" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -415,14 +404,15 @@
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
                     app:cardBackgroundColor="@color/card_bg"
-                    app:cardCornerRadius="20dp"
+                    app:cardCornerRadius="16dp"
                     app:cardElevation="0dp">
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="16dp">
+                        android:padding="12dp">
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -438,19 +428,19 @@
                             android:textColor="@color/text_secondary"
                             android:textSize="11sp"
                             android:fontFamily="monospace"
-                            android:layout_marginTop="8dp"
-                            android:maxLines="12" />
+                            android:layout_marginTop="4dp"
+                            android:maxLines="8" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- About card at bottom -->
+                <!-- About card (collapsed by default) -->
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/cardAbout"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
+                    android:layout_marginBottom="4dp"
                     app:cardBackgroundColor="@color/card_bg_alt"
-                    app:cardCornerRadius="20dp"
+                    app:cardCornerRadius="16dp"
                     app:cardElevation="0dp"
                     app:strokeColor="@color/card_border_off"
                     app:strokeWidth="1dp">
@@ -458,7 +448,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="16dp">
+                        android:padding="12dp">
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -470,16 +460,16 @@
                                 android:layout_weight="1"
                                 android:text="@string/about_title"
                                 android:textColor="@color/text_primary"
-                                android:textSize="15sp"
+                                android:textSize="14sp"
                                 android:textStyle="bold" />
                             <TextView
                                 android:id="@+id/tvAboutToggle"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="@string/about_collapse"
+                                android:text="@string/about_expand"
                                 android:textColor="@color/teal"
                                 android:textSize="12sp"
-                                android:padding="4dp"
+                                android:padding="2dp"
                                 android:background="?attr/selectableItemBackground" />
                         </LinearLayout>
                         <TextView
@@ -490,7 +480,8 @@
                             android:textColor="@color/text_secondary"
                             android:textSize="12sp"
                             android:lineSpacingMultiplier="1.2"
-                            android:layout_marginTop="8dp" />
+                            android:layout_marginTop="6dp"
+                            android:visibility="gone" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -507,7 +498,7 @@
         android:textSize="11sp"
         android:fontFamily="monospace"
         android:gravity="center"
-        android:paddingTop="4dp"
-        android:paddingBottom="8dp" />
+        android:paddingTop="2dp"
+        android:paddingBottom="6dp" />
 
 </LinearLayout>
