@@ -42,7 +42,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvIp: TextView
     private lateinit var tvPort: TextView
     private lateinit var tvVersion: TextView
-    private lateinit var chipRoot: TextView
+    private lateinit var swRoot: MaterialSwitch
     private lateinit var tvBoot: TextView
     private lateinit var tvShield: TextView
     private lateinit var swBoot: MaterialSwitch
@@ -94,7 +94,7 @@ class MainActivity : AppCompatActivity() {
         tvAboutDesc = findViewById(R.id.tvAboutDesc)
         tvAboutToggle = findViewById(R.id.tvAboutToggle)
         tvVersion = findViewById(R.id.tvVersion)
-        chipRoot = findViewById(R.id.chipRoot)
+        swRoot = findViewById(R.id.swRoot)
         tvBoot = findViewById(R.id.tvBoot)
         tvShield = findViewById(R.id.tvXposed)
         swShield = findViewById(R.id.swShield)
@@ -234,7 +234,7 @@ class MainActivity : AppCompatActivity() {
                 tintCircle(icShield, shieldUi)
 
                 tvRoot.text = if (rootOk) getString(R.string.root_active) else getString(R.string.root_inactive)
-                setChipText(chipRoot, if (rootOk) "OK" else "--", rootOk)
+                swRoot.isChecked = rootOk
                 cardRoot.strokeColor = getColor(if (rootOk) R.color.card_border_on else R.color.card_border_off)
                 tintCircle(icRoot, rootOk)
 
@@ -251,12 +251,6 @@ class MainActivity : AppCompatActivity() {
         iv.setBackgroundResource(if (active) R.drawable.bg_icon_circle_on else R.drawable.bg_icon_circle_off)
         iv.setColorFilter(ContextCompat.getColor(this,
             if (active) R.color.on_teal_container else R.color.text_secondary))
-    }
-
-    private fun setChipText(tv: TextView, text: String, active: Boolean) {
-        tv.text = text
-        tv.setTextColor(getColor(if (active) R.color.chip_active_text else R.color.chip_inactive_text))
-        tv.setBackgroundResource(if (active) R.drawable.bg_chip_active else R.drawable.bg_chip)
     }
 
     private fun toggleGuard(on: Boolean) {
