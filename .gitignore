@@ -1,33 +1,18 @@
-# Flutter/Dart
-.dart_tool/
-.packages
+# Gradle
+.gradle/
 build/
-.flutter-plugins
-.flutter-plugins-dependencies
-pubspec.lock
-*.iml
-.idea/
+!gradle/wrapper/gradle-wrapper.jar
 
-# Rust
-/target/
-*.so
-*.dylib
-
-# Android build
-android/.gradle/
-android/app/build/
-android/build/
-android/local.properties
-android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
-
-# Gradle wrapper (keep properties, not jar)
-android/gradle/wrapper/gradle-wrapper.jar
-
-# Kotlin
-.android/
+# Android
+local.properties
+*.apk
+*.ap_
+*.aab
 
 # IDE
+.idea/
 .vscode/
+*.iml
 *.swp
 *.swo
 
@@ -39,4 +24,3 @@ Thumbs.db
 keystore.properties
 *.jks
 *.keystore
-
