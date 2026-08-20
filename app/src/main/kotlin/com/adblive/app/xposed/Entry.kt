@@ -31,11 +31,25 @@ class Entry : IXposedHookLoadPackage {
             lastShieldCheckMs = System.currentTimeMillis()
         }
 
+        private fun isBootCompleted(): Boolean {
+            return try {
+                val cls = Class.forName("android.os.SystemProperties")
+                val get = cls.getMethod("get", String::class.java)
+                val v = get.invoke(null, "sys.boot_completed") as? String ?: ""
+                v == "1"
+            } catch (_: Throwable) {
+                false
+            }
+        }
+
         private fun isAppGone(): Boolean {
             val now = System.currentTimeMillis()
             if (now - lastAppGoneCheckMs > APP_GONE_CHECK_TTL_MS) {
                 lastAppGoneCheckMs = now
                 appGoneCache = try {
+                    // 开机早期 /data/user 尚未就绪，必须等 boot_completed 后才判定卸载，
+                    // 否则会把正常安装误判为已卸载，清掉 /data/system 盾文件（盾重启不持久）
+                    isBootCompleted() &&
                     !File("/data/data/com.adblive.app").exists() &&
                     !File("/data/user/0/com.adblive.app").exists()
                 } catch (_: Throwable) { false }
