@@ -50,9 +50,15 @@ class BootReceiver : BroadcastReceiver() {
                 Log.d(TAG, "boot: guard deployed=" + deployed)
 
                 // Make sure wireless ADB enabled + port 5555.
-                ShellUtils.executeSu("setprop service.adb.tcp.port 5555")
-                ShellUtils.executeSu("settings put global adb_wifi_enabled 1")
-                ShellUtils.executeSu("getprop service.adb.tcp.port")
+                // U4: Don't auto-enable ADB if user had manually disabled it
+                val userDisabled = AdbGuardManager.isUserDisabledAdb()
+                Log.d(TAG, "boot: user_disabled_adb=" + userDisabled)
+
+                if (!userDisabled) {
+                    ShellUtils.executeSu("setprop service.adb.tcp.port 5555")
+                    ShellUtils.executeSu("settings put global adb_wifi_enabled 1")
+                    ShellUtils.executeSu("getprop service.adb.tcp.port")
+                }
             } catch (t: Throwable) {
                 Log.e(TAG, "boot handler failed: " + t.message)
             }

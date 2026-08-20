@@ -15,12 +15,12 @@
     <string name="about_title">About</string>
     <string name="about_expand">Show description</string>
     <string name="about_collapse">Hide description</string>
-    <string name="about_desc">ADBLive keeps wireless ADB alive on your device. It combines two layers: Passive Guard only needs root and auto-restarts adbd if it dies, while Active Shield requires the LSPosed framework to block the system from stopping wireless ADB. The ADB port is fixed at 5555.</string>
+    <string name="about_desc">ADBLive keeps wireless ADB alive on your device. It combines two layers: Passive Guard only needs root and auto-restarts adbd if it dies, while Active Shield requires the LSPosed framework to block the system from stopping wireless ADB. The ADB port is fixed at 5555. To enable Active Shield: open LSPosed, enable ADBLive, and select System Framework (system) and com.android.settings (ADBLive\'s own app is auto-injected), then reboot.</string>
 
     <string name="shield_label">Active Shield</string>
     <string name="shield_active">Hooks active</string>
     <string name="shield_inactive">Not enabled in LSPosed</string>
-    <string name="shield_desc">Needs the LSPosed framework; blocks the system from disabling wireless ADB or killing adbd.</string>
+    <string name="shield_desc">Needs LSPosed: select system + com.android.settings in scope (own app is auto-injected), then reboot. Blocks the system from disabling wireless ADB or killing adbd.</string>
 
     <string name="root_label">Root Access</string>
     <string name="root_active">Granted</string>

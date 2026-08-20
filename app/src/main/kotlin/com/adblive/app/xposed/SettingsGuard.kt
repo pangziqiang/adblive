@@ -20,6 +20,7 @@ object SettingsGuard {
     fun hookSystemServer(lpparam: LoadPackageParam) {
         if (!registeredSys.compareAndSet(false, true)) return
         Entry.log("SettingsGuard mounting system_server guards")
+        hookSettingsProviderPut()
         hookGlobalPutInt()
         hookGlobalPutString()
         hookTransportCall(lpparam.classLoader)
@@ -28,6 +29,35 @@ object SettingsGuard {
     fun hookSettings(lpparam: LoadPackageParam) {
         Entry.log("SettingsGuard mounting Settings guards")
         hookTransportCall(lpparam.classLoader)
+    }
+
+    private fun hookSettingsProviderPut() {
+        val clazz = try {
+            XposedHelpers.findClass("com.android.providers.settings.SettingsProvider", null)
+        } catch (t: Throwable) { Entry.log("SettingsGuard findClass SettingsProvider failed: " + t.message); return }
+        var hooked = false
+        for (sig in arrayOf(
+            arrayOf(String::class.java, String::class.java, String::class.java, String::class.java, Boolean::class.javaPrimitiveType),
+            arrayOf(String::class.java, String::class.java, String::class.java, String::class.java, Boolean::class.javaPrimitiveType, Boolean::class.javaPrimitiveType),
+        )) {
+            try {
+                XposedHelpers.findAndHookMethod(clazz, "put", *sig, object : XC_MethodHook() {
+                    override fun beforeHookedMethod(param: MethodHookParam) {
+                        try {
+                            if (!shouldBlock()) return
+                            val name = param.args[1] as? String ?: return
+                            val value = param.args[2] as? String ?: return
+                            if (name == KEY && isOff(value)) {
+                                Entry.log("SettingsGuard blocked SettingsProvider.put(" + KEY + ")")
+                                param.throwable = SecurityException("adb_wifi_enabled is protected by ADBLive shield")
+                            }
+                        } catch (_: Throwable) { }
+                    }
+                })
+                hooked = true
+            } catch (_: Throwable) { }
+        }
+        if (hooked) Entry.log("SettingsGuard hooked SettingsProvider.put") else Entry.log("SettingsGuard SettingsProvider.put hook failed (no matching method)")
     }
 
     private fun hookGlobalPutInt() {
@@ -81,25 +111,43 @@ object SettingsGuard {
     private fun hookTransportCall(classLoader: ClassLoader?) {
         try {
             val transport = XposedHelpers.findClass("android.content.ContentProvider\$Transport", classLoader)
-            XposedHelpers.findAndHookMethod(transport, "call",
-                android.content.AttributionSource::class.java,
-                String::class.java, String::class.java, String::class.java, Bundle::class.java,
-                object : XC_MethodHook() {
-                    override fun beforeHookedMethod(param: MethodHookParam) {
-                        try {
-                            if (!shouldBlock()) return
-                            val authority = param.args[1] as? String ?: return
-                            val method = param.args[2] as? String ?: return
-                            val name = param.args[3] as? String ?: return
-                            val extras = param.args[4] as? Bundle ?: return
-                            if (authority == "settings" && method == "PUT_global" && name == KEY && isOff(extras.getString("value"))) {
-                                Entry.log("SettingsGuard blocked Transport.call(" + KEY + ")")
-                                param.setResult(null)
-                            }
-                        } catch (_: Throwable) { }
-                    }
-                })
-            Entry.log("SettingsGuard hooked Transport.call")
+            val sigs = arrayOf(
+                arrayOf(String::class.java, String::class.java, Bundle::class.java),
+                arrayOf(String::class.java, String::class.java, String::class.java, Bundle::class.java),
+                arrayOf(android.content.AttributionSource::class.java, String::class.java, String::class.java, String::class.java, Bundle::class.java),
+            )
+            for (sig in sigs) {
+                try {
+                    XposedHelpers.findAndHookMethod(transport, "call", *sig, object : XC_MethodHook() {
+                        override fun beforeHookedMethod(param: MethodHookParam) {
+                            try {
+                                if (!shouldBlock()) return
+                                val argc = param.args.size
+                                val method: String = when (argc) {
+                                    3 -> param.args[1] as? String ?: return
+                                    4 -> param.args[1] as? String ?: return
+                                    else -> param.args[2] as? String ?: return
+                                }
+                                val name: String? = when (argc) {
+                                    3 -> null
+                                    4 -> param.args[2] as? String
+                                    else -> param.args[3] as? String
+                                }
+                                val extras: Bundle? = when (argc) {
+                                    3 -> param.args[2] as? Bundle
+                                    4 -> param.args[3] as? Bundle
+                                    else -> param.args[4] as? Bundle
+                                }
+                                if (method == "PUT_global" && name == KEY && isOff(extras?.getString("value"))) {
+                                    Entry.log("SettingsGuard blocked Transport.call(" + KEY + ") argc=" + argc)
+                                    param.throwable = SecurityException("adb_wifi_enabled is protected by ADBLive shield")
+                                }
+                            } catch (_: Throwable) { }
+                        }
+                    })
+                } catch (_: Throwable) { }
+            }
+            Entry.log("SettingsGuard hooked Transport.call variants")
         } catch (t: Throwable) {
             Entry.log("SettingsGuard hook Transport.call failed: " + t.message)
         }
@@ -107,6 +155,8 @@ object SettingsGuard {
 
     private fun isOff(value: String?): Boolean {
         val v = (value ?: return false).trim()
-        return v == "0" || v.equals("false", true) || v.equals("disable", true)
+        return v == "0" || v.equals("false", true) || v.equals("disable", true) ||
+            v.equals("off", true) || v.equals("no", true)
     }
 }
+

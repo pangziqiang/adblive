@@ -51,4 +51,13 @@ object ShellUtils {
         val r = executeSu("id")
         return r.isSuccess() && r.output.contains("uid=0")
     }
+
+    fun suHidden(): Boolean {
+        return try {
+            val f = java.io.File("/system/bin/su")
+            !f.exists() || !f.canExecute()
+        } catch (_: Exception) {
+            false
+        }
+    }
 }
