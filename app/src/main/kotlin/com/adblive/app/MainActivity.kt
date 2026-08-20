@@ -446,6 +446,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     // #3: move setPref into Thread after shell command succeeds
+    // S3: serialize toggles + discard superseded ones to avoid adbd race and UI flicker
+    private val adbWorker = java.util.concurrent.Executors.newSingleThreadExecutor()
+    private val adbToggleSeq = java.util.concurrent.atomic.AtomicInteger(0)
+
     private fun toggleAdb(on: Boolean) {
         val canSecure = checkSelfPermission(android.Manifest.permission.WRITE_SECURE_SETTINGS) == android.content.pm.PackageManager.PERMISSION_GRANTED
         if (!rootOk && !canSecure) {
@@ -454,48 +458,55 @@ class MainActivity : AppCompatActivity() {
             swAdb.isChecked = !on
             return
         }
-        Thread {
-            val secureOk = if (rootOk) true else putSecureAdb(on)
-            if (on) {
-                // User wants ADB on: clear intent file so guard resumes
-                AdbGuardManager.clearUserDisabledAdb()
-                if (rootOk) {
-                    ShellUtils.executeSu("setprop service.adb.tcp.port 5555")
-                    ShellUtils.executeSu("settings put global adb_wifi_enabled 1")
-                    ShellUtils.executeSu("stop adbd && start adbd")
-                }
-                runOnUiThread { appendLog(if (secureOk) "adb enabling on port 5555" else "adb enable failed (no permission)") }
-            } else {
-                // User wants ADB off: write intent file so guard won't restore
-                AdbGuardManager.writeUserDisabledAdb()
-                if (rootOk) {
-                    ShellUtils.executeSu("setprop service.adb.tcp.port 0")
-                    putSecureAdb(false)
-                }
-                runOnUiThread { appendLog(if (secureOk) "adb disabled" else "adb disable failed (no permission)") }
+        val seq = adbToggleSeq.incrementAndGet()
+        adbWorker.execute {
+            if (seq != adbToggleSeq.get()) return@execute
+            performToggle(on, seq)
+        }
+    }
+
+    private fun performToggle(on: Boolean, seq: Int) {
+        val secureOk = if (rootOk) true else putSecureAdb(on)
+        if (on) {
+            // User wants ADB on: clear intent file so guard resumes
+            AdbGuardManager.clearUserDisabledAdb()
+            if (rootOk) {
+                ShellUtils.executeSu("setprop service.adb.tcp.port 5555")
+                ShellUtils.executeSu("settings put global adb_wifi_enabled 1")
+                ShellUtils.executeSu("stop adbd && start adbd")
             }
-            Thread.sleep(1000)
-            val adbW = if (rootOk) ShellUtils.executeSu("settings get global adb_wifi_enabled")
-                       else getSecureAdb()
-            val adbR = if (rootOk) ShellUtils.executeSu("getprop service.adb.tcp.port")
-                       else adbW
-            val ip = getLocalIp()
-            adbOn = if (rootOk) {
-                adbR.isSuccess() && adbR.output.trim() == "5555" &&
-                adbW.isSuccess() && adbW.output.trim() == "1"
-            } else {
-                adbW.isSuccess() && adbW.output.trim() == "1"
+            runOnUiThread { appendLog(if (secureOk) "adb enabling on port 5555" else "adb enable failed (no permission)") }
+        } else {
+            // User wants ADB off: write intent file so guard won't restore
+            AdbGuardManager.writeUserDisabledAdb()
+            if (rootOk) {
+                ShellUtils.executeSu("setprop service.adb.tcp.port 0")
+                putSecureAdb(false)
             }
-            runOnUiThread {
-                ipText = ip
-                tvIp.text = ip.ifEmpty { "--" }
-                tvAdb.text = if (adbOn) getString(R.string.adb_active) else getString(R.string.adb_inactive)
-                swAdb.isChecked = adbOn
-                cardAdb.strokeColor = getColor(if (adbOn) R.color.card_border_on else R.color.card_border_off)
-                tintCircle(icAdb, adbOn)
-                appendLog("adb port now " + (adbR.output.trim().ifEmpty { "0" }))
-            }
-        }.start()
+            runOnUiThread { appendLog(if (secureOk) "adb disabled" else "adb disable failed (no permission)") }
+        }
+        Thread.sleep(1000)
+        if (seq != adbToggleSeq.get()) return
+        val adbW = if (rootOk) ShellUtils.executeSu("settings get global adb_wifi_enabled")
+                   else getSecureAdb()
+        val adbR = if (rootOk) ShellUtils.executeSu("getprop service.adb.tcp.port")
+                   else adbW
+        val ip = getLocalIp()
+        adbOn = if (rootOk) {
+            adbR.isSuccess() && adbR.output.trim() == "5555" &&
+            adbW.isSuccess() && adbW.output.trim() == "1"
+        } else {
+            adbW.isSuccess() && adbW.output.trim() == "1"
+        }
+        runOnUiThread {
+            ipText = ip
+            tvIp.text = ip.ifEmpty { "--" }
+            tvAdb.text = if (adbOn) getString(R.string.adb_active) else getString(R.string.adb_inactive)
+            swAdb.isChecked = adbOn
+            cardAdb.strokeColor = getColor(if (adbOn) R.color.card_border_on else R.color.card_border_off)
+            tintCircle(icAdb, adbOn)
+            appendLog("adb port now " + (adbR.output.trim().ifEmpty { "0" }))
+        }
     }
 
     private fun showRootRequiredHint() {
