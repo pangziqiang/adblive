@@ -65,6 +65,14 @@
 
 - [ ] **S1 root 授权后 UI 闪烁** — maybeAutoEnableGuard 完成后调 refresh() 刷新界面，避免 ADB 先闪关再变开
 - [ ] **S2 deployAndStart + enableWirelessAdbNow 重复开 ADB** — deployAndStart 已经开了 ADB，enableWirelessAdbNow 重复，砍掉
+- [ ] **S3 连续开关 UI 抖动（实测）** — 快速连续开关（≥2 次）时，第 4 个"开"动作圆圈先到开位→回关→再回开。根因：`toggleAdb` 无串行/去重，每次点击各开一个 Thread，`Thread.sleep(1000)` + 回读后各线程**乱序覆写** `swAdb.isChecked`（陈旧状态覆盖最新），且 setprop/settings put/stop-start adbd 竞态。待处理：toggleAdb 加串行队列或丢弃过期结果，只在最后一次动作后回读更新 UI
+
+## 回归发现的问题（待修）
+
+- [ ] **B1 守护开机自毁（实测，回归 4.3）** — 重启后守护脚本 + intent file 同时消失，守护未自启。根因：service.d 在开机早期执行看门狗，此时 PackageManager 未就绪，`app_gone()` 的 `! pm path com.adblive.app` 误判 app 已卸载 → `cleanup_guard()` 自毁（删脚本 + intent + pid）。intent file 只有 `cleanup_guard()` 会删，脚本与 intent 同消失即铁证。且 BootReceiver 未补部署（疑似 root 未就绪或部署后又被自毁）。待处理：①`app_gone()` 加开机保护——仅当 `getprop sys.boot_completed`=1 或重试 `pm path` 多次后才判定自毁；②排查 BootReceiver 开机未部署原因（KernelSU root 时序）
+- [x] **B1 守护开机自毁（已修，重启验证通过）** — 根因：service.d 开机早期执行看门狗，PackageManager 未就绪，`app_gone()` 的 `! pm path` 误判 app 已卸载 → `cleanup_guard()` 自毁删脚本+intent+pid。修复：`app_gone()` 加开机保护——`getprop sys.boot_completed`≠1 时不判定自毁，且重试 `pm path` 3 次（间隔 2s）排除瞬时不稳。实测重启后守护存活（PID 正常）、脚本与 intent file 保留、ADB 保持关闭。
+- [ ] **B2 MIUI 限制 BootReceiver 开机自启（实测，回归 4.3）** — logcat 见 `BroadcastQueueInjector: Unable to launch app com.adblive.app ... process is not permitted to auto start`，MIUI 未授予自启权限时 BOOT_COMPLETED 广播不会拉起 App，BootReceiver 不执行（开机补部署/开 ADB 逻辑失效）。当前靠 `service.d` 守护自启为主路径，功能不受影响；但若要 BootReceiver 生效需用户在 MIUI 授权自启。待处理：在 UI/文档提示用户开启自启权限，或评估是否需要
+
 ## UI 体验原则
 
 - [ ] **所有状态切换必须优雅** — 不能出现卡顿、闪屏、生硬跳变
