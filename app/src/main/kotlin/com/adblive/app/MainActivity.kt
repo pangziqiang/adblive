@@ -21,7 +21,6 @@ import androidx.core.content.ContextCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.materialswitch.MaterialSwitch
-import com.adblive.app.xposed.Entry
 import com.adblive.app.util.AdbGuardManager
 import com.adblive.app.util.ShieldStateFile
 import com.adblive.app.util.ShellUtils
@@ -415,7 +414,6 @@ class MainActivity : AppCompatActivity() {
         }
         Thread {
             val ok = if (on) ShieldStateFile.arm() else ShieldStateFile.disarm()
-            Entry.refreshShieldState()
             val active = !ShieldStateFile.exists() && xposedOk
             shieldOn = active
             runOnUiThread {
