@@ -85,7 +85,8 @@ rm -f /data/local/tmp/adblive_guard.pid
 rm -rf /data/local/tmp/adblive_guard.lock
 rm -f /data/adb/adblive_user_disabled_adb
 rm -f /data/local/tmp/adblive_uninstalled.sh /data/local/tmp/adblive_guard.watch
-[ -n "$PID" ] && kill -9 -"$PID" 2>/dev/null
+# setsid 让 kill 脱离守护进程组，避免组内自杀导致信号未送完（否则守护可能残活一轮）
+[ -n "$PID" ] && setsid kill -9 -"$PID" 2>/dev/null
 exit 0
 TRIG
 chmod 755 /data/local/tmp/adblive_uninstalled.sh
