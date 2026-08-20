@@ -31,9 +31,7 @@ class MainActivity : AppCompatActivity() {
 
     private companion object {
         const val PREFS = "adblive_guard"
-        const val KEY_GUARD_ENABLED = "guard_enabled"
         const val KEY_BOOT_ENABLED = "boot_enabled"
-        const val KEY_SHIELD_ENABLED = "shield_enabled"
     }
 
     private lateinit var tvRoot: TextView
@@ -415,7 +413,6 @@ class MainActivity : AppCompatActivity() {
             swShield.isChecked = !on
             return
         }
-        setPref(KEY_SHIELD_ENABLED, on)
         Thread {
             val ok = if (on) ShieldStateFile.arm() else ShieldStateFile.disarm()
             Entry.refreshShieldState()
