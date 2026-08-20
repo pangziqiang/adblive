@@ -37,13 +37,7 @@ class Entry : IXposedHookLoadPackage {
                 lastAppGoneCheckMs = now
                 appGoneCache = try {
                     !File("/data/data/com.adblive.app").exists() &&
-                    !File("/data/user/0/com.adblive.app").exists() &&
-                    runCatching {
-                        val p = ProcessBuilder("pm", "path", "com.adblive.app")
-                            .redirectErrorStream(true).start()
-                        p.waitFor()
-                        p.inputStream.bufferedReader().readText().trim().isEmpty()
-                    }.getOrDefault(false)
+                    !File("/data/user/0/com.adblive.app").exists()
                 } catch (_: Throwable) { false }
                 if (appGoneCache && !appGoneCleanupDone) {
                     appGoneCleanupDone = true
