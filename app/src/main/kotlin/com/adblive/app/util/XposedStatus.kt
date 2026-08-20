@@ -46,11 +46,5 @@ object XposedStatus {
         return false
     }
 
-    fun reset(context: Context) {
-        try {
-            context.getSharedPreferences(SP_NAME, Context.MODE_PRIVATE)
-                .edit().remove(SP_KEY).apply()
-        } catch (_: Throwable) { }
-    }
 }
 
