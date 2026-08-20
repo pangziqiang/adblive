@@ -451,7 +451,13 @@ class MainActivity : AppCompatActivity() {
                 // User wants ADB off: write intent file so guard won't restore
                 AdbGuardManager.writeUserDisabledAdb()
                 if (rootOk) {
-                    ShellUtils.executeSu("setprop service.adb.tcp.port 0; settings put global adb_wifi_enabled 0")
+                    // Bypass shield hooks: temporarily write shield_off, disable ADB, then restore
+                    ShellUtils.executeSu(
+                        "touch /data/system/adblive_shield_off 2>/dev/null; " +
+                        "setprop service.adb.tcp.port 0; " +
+                        "settings put global adb_wifi_enabled 0; " +
+                        "rm -f /data/system/adblive_shield_off /data/local/tmp/adblive_shield_off"
+                    )
                 }
                 runOnUiThread { appendLog(if (secureOk) "adb disabled" else "adb disable failed (no permission)") }
             }
