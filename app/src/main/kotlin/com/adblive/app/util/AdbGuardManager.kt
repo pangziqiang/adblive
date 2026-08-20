@@ -69,10 +69,9 @@ object AdbGuardManager {
 
 
 
-    // #10: use temp file for base64 decode to avoid ARG_MAX limit
-    fun deployAndStart(context: Context): Boolean {
+    /** Write current watchdog script (plus port/boot markers) to disk. Safe to call while guard runs (B5). */
+    fun refreshScript(context: Context): Boolean {
         return try {
-            clearStopSignal(context)
             val script = context.assets.open("watchdog.sh").bufferedReader().use { it.readText() }
             val b64 = Base64.encodeToString(script.toByteArray(), Base64.NO_WRAP)
             val port = readCurrentPort()
@@ -86,12 +85,24 @@ object AdbGuardManager {
                 "cat > " + tmpB64 + " << 'B64EOF'\n" + b64 + "\nB64EOF\n" +
                 "base64 -d " + tmpB64 + " > " + SCRIPT_PATH + " && " +
                 "rm -f " + tmpB64 + " && " +
-                "chmod 755 " + SCRIPT_PATH + " && " +
-                "setsid sh " + SCRIPT_PATH + " manual >/dev/null 2>&1 & " +
-                "echo deployed"
+                "chmod 755 " + SCRIPT_PATH
             val r = ShellUtils.executeSu(cmd, 3000)
             invalidateStateCache()
-            r.isSuccess() && r.output.contains("deployed")
+            r.isSuccess()
+        } catch (t: Throwable) {
+            Log.e(TAG, "refresh script failed: " + t.message)
+            false
+        }
+    }
+
+    // #10: use temp file for base64 decode to avoid ARG_MAX limit
+    fun deployAndStart(context: Context): Boolean {
+        return try {
+            clearStopSignal(context)
+            if (!refreshScript(context)) return false
+            val r = ShellUtils.executeSu("setsid sh " + SCRIPT_PATH + " manual >/dev/null 2>&1 & echo started")
+            invalidateStateCache()
+            r.isSuccess() && r.output.contains("started")
         } catch (t: Throwable) {
             Log.e(TAG, "deploy failed: " + t.message)
             false
