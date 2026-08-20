@@ -2,7 +2,18 @@
 # adblive passive guard - watchdog.sh
 
 app_gone() {
-    ! pm path com.adblive.app >/dev/null 2>&1
+    # 开机早期 PackageManager 未就绪，pm path 可能误报 app 已卸载 → 禁止此时自毁。
+    # 仅当系统完全开机后才可信，并重试 pm path 排除瞬时不稳（B1 修复）。
+    if [ "$(getprop sys.boot_completed 2>/dev/null)" != "1" ]; then
+        return 1
+    fi
+    for _ in 1 2 3; do
+        if pm path com.adblive.app >/dev/null 2>&1; then
+            return 1
+        fi
+        sleep 2
+    done
+    return 0
 }
 
 cleanup_guard() {
