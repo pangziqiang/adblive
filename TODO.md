@@ -31,6 +31,10 @@
 
 ## 待讨论优化
 
+### 简化方向（用户反馈：功能不多但维护/升级麻烦）
+- [ ] **S0 升级后脚本不更新（同 B5）** — 首要，详见 B5
+- [ ] **S1 守护脚本分支过多** — watchdog 承担开机自启/卸载自毁/停止信号/用户意志/盾待机/pid锁/端口，每加需求堆分支；评估合并精简、减少状态文件，保持“卸载零残留 + 尊重用户意志”硬要求
+
 ### 功能 2 — 无线 ADB 开关
 - [x] G1 Guard 端口不热更新 — restore() 每轮重读 prop + port file
 - [x] G2 Guard 重启条件 OR 太激进 — ss 不可靠导致不必要重启
@@ -73,6 +77,7 @@
 - [x] **B1 守护开机自毁（已修，重启验证通过）** — 根因：service.d 开机早期执行看门狗，PackageManager 未就绪，`app_gone()` 的 `! pm path` 误判 app 已卸载 → `cleanup_guard()` 自毁删脚本+intent+pid。修复：`app_gone()` 加开机保护——`getprop sys.boot_completed`≠1 时不判定自毁，且重试 `pm path` 3 次（间隔 2s）排除瞬时不稳。实测重启后守护存活（PID 正常）、脚本与 intent file 保留、ADB 保持关闭。
 - [ ] **B2 MIUI 限制 BootReceiver 开机自启（实测，回归 4.3）** — logcat 见 `BroadcastQueueInjector: Unable to launch app com.adblive.app ... process is not permitted to auto start`，MIUI 未授予自启权限时 BOOT_COMPLETED 广播不会拉起 App，BootReceiver 不执行（开机补部署/开 ADB 逻辑失效）。当前靠 `service.d` 守护自启为主路径，功能不受影响；但若要 BootReceiver 生效需用户在 MIUI 授权自启。待处理：在 UI/文档提示用户开启自启权限，或评估是否需要
 - [ ] **B3 守护重启后 PID 复用误判（实测，回归 4.5）** — 重启后守护未运行、ADB 未拉回，脚本仍存在（非 B1 自毁）。根因：`guard.pid`/`guard.lock` 里残留旧守护 PID，重启后该 PID 被系统复用作其他进程（实测复用作 qcc-vendor），`kill -0` 判定存活 → 新守护误以为已有实例而 `exit 0`。修复：新增 `guard_alive()`，校验 PID 必须同时满足 kill -0 存活、`/proc/PID/cmdline` 含 `99_adblive_guard.sh`、非僵尸，才认为已有实例；lock 与 pid 两处检查均改用此函数。待验证重启
+- [ ] **B5 升级后守护脚本不更新（实测）** — 安装新 APK 后旧守护进程仍在跑，`maybeAutoEnableGuard` 因 `isGuardRunning()` 判存活而跳过重部署，磁盘守护脚本仍为旧版（例如缺 `boot_enabled` 开机检查），导致新逻辑不生效，需手动杀进程/重部署/重启。修复：app 每次启动/开守护时无条件重写脚本文件（幂等，不影响运行中进程），或脚本带版本号比对后刷新
 - [ ] **B4 卸载残留时序边界（实测）** — 卸载清理依赖看门狗轮询 `app_gone`（10s 间隔）；若用户在卸载后 10s 内立刻重装，看门狗从未观察到 app 缺失状态，不会执行 `cleanup_guard()`，脚本/pid/lock 残留（实测：卸载重装后 `99_adblive_guard.sh`+pid+lock 仍在，需手动清理）。待处理：App 启动带 root 时清理孤立守护文件（无守护进程时删脚本/pid/lock），或 Hook 包卸载事件
 
 ## UI 体验原则
