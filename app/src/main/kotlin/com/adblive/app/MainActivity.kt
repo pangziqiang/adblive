@@ -65,6 +65,7 @@ class MainActivity : AppCompatActivity() {
 
     private val handler = Handler(Looper.getMainLooper())
     @Volatile private var rootOk = false
+    @Volatile private var legacyShieldSwept = false
     private var xposedOk = false
     private var shieldOn = false
     private var guardOn = false
@@ -246,6 +247,14 @@ class MainActivity : AppCompatActivity() {
             if (rootNow && rootChanged) {
                 ShellUtils.executeSu("pm grant com.adblive.app android.permission.WRITE_SECURE_SETTINGS")
             }
+            if (rootNow && !legacyShieldSwept) {
+                legacyShieldSwept = true
+                // 新设计盾状态只在 /data/system；清掉旧版本残留在 /data/local/tmp 和 /data/adb 的盾文件
+                ShellUtils.executeSu(
+                    "rm -f /data/local/tmp/adblive_shield_armed /data/local/tmp/adblive_shield_off " +
+                    "/data/adb/adblive_shield_armed /data/adb/adblive_shield_off"
+                )
+            }
             val shieldActual = ShieldStateFile.exists()
             adbOn = adbNow
             guardOn = guardDeployed && guardRunning
@@ -275,7 +284,7 @@ class MainActivity : AppCompatActivity() {
                 cardGuard.strokeColor = getColor(if (guardOn) R.color.card_border_on else R.color.card_border_off)
                 tintCircle(icGuard, guardOn)
 
-                val shieldUi = !shieldActual
+                val shieldUi = shieldActual
                 val shieldActive = shieldUi && xposedOk
                 tvShield.text = if (shieldActive) getString(R.string.shield_active) else getString(R.string.shield_inactive)
                 swShield.isChecked = shieldActive
@@ -417,11 +426,11 @@ class MainActivity : AppCompatActivity() {
         }
         Thread {
             val ok = if (on) ShieldStateFile.arm() else ShieldStateFile.disarm()
-            val active = !ShieldStateFile.exists() && xposedOk
+            val active = ShieldStateFile.exists() && xposedOk
             shieldOn = active
             runOnUiThread {
                 appendLog(if (on) "active shield on" else "active shield off")
-                if (!ok) appendLog("kill-switch 写入失败（可能无 Root），盾状态未真正切换")
+                if (!ok) appendLog("盾状态文件写入失败（可能无 Root），盾状态未真正切换")
                 tvShield.text = if (active) getString(R.string.shield_active) else getString(R.string.shield_inactive)
                 swShield.isChecked = active
                 cardXposed.strokeColor = getColor(if (active) R.color.card_border_on else R.color.card_border_off)
