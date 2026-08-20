@@ -72,6 +72,8 @@
 - [ ] **B1 守护开机自毁（实测，回归 4.3）** — 重启后守护脚本 + intent file 同时消失，守护未自启。根因：service.d 在开机早期执行看门狗，此时 PackageManager 未就绪，`app_gone()` 的 `! pm path com.adblive.app` 误判 app 已卸载 → `cleanup_guard()` 自毁（删脚本 + intent + pid）。intent file 只有 `cleanup_guard()` 会删，脚本与 intent 同消失即铁证。且 BootReceiver 未补部署（疑似 root 未就绪或部署后又被自毁）。待处理：①`app_gone()` 加开机保护——仅当 `getprop sys.boot_completed`=1 或重试 `pm path` 多次后才判定自毁；②排查 BootReceiver 开机未部署原因（KernelSU root 时序）
 - [x] **B1 守护开机自毁（已修，重启验证通过）** — 根因：service.d 开机早期执行看门狗，PackageManager 未就绪，`app_gone()` 的 `! pm path` 误判 app 已卸载 → `cleanup_guard()` 自毁删脚本+intent+pid。修复：`app_gone()` 加开机保护——`getprop sys.boot_completed`≠1 时不判定自毁，且重试 `pm path` 3 次（间隔 2s）排除瞬时不稳。实测重启后守护存活（PID 正常）、脚本与 intent file 保留、ADB 保持关闭。
 - [ ] **B2 MIUI 限制 BootReceiver 开机自启（实测，回归 4.3）** — logcat 见 `BroadcastQueueInjector: Unable to launch app com.adblive.app ... process is not permitted to auto start`，MIUI 未授予自启权限时 BOOT_COMPLETED 广播不会拉起 App，BootReceiver 不执行（开机补部署/开 ADB 逻辑失效）。当前靠 `service.d` 守护自启为主路径，功能不受影响；但若要 BootReceiver 生效需用户在 MIUI 授权自启。待处理：在 UI/文档提示用户开启自启权限，或评估是否需要
+- [ ] **B3 守护重启后 PID 复用误判（实测，回归 4.5）** — 重启后守护未运行、ADB 未拉回，脚本仍存在（非 B1 自毁）。根因：`guard.pid`/`guard.lock` 里残留旧守护 PID，重启后该 PID 被系统复用作其他进程（实测复用作 qcc-vendor），`kill -0` 判定存活 → 新守护误以为已有实例而 `exit 0`。修复：新增 `guard_alive()`，校验 PID 必须同时满足 kill -0 存活、`/proc/PID/cmdline` 含 `99_adblive_guard.sh`、非僵尸，才认为已有实例；lock 与 pid 两处检查均改用此函数。待验证重启
+- [ ] **B4 卸载残留时序边界（实测）** — 卸载清理依赖看门狗轮询 `app_gone`（10s 间隔）；若用户在卸载后 10s 内立刻重装，看门狗从未观察到 app 缺失状态，不会执行 `cleanup_guard()`，脚本/pid/lock 残留（实测：卸载重装后 `99_adblive_guard.sh`+pid+lock 仍在，需手动清理）。待处理：App 启动带 root 时清理孤立守护文件（无守护进程时删脚本/pid/lock），或 Hook 包卸载事件
 
 ## UI 体验原则
 

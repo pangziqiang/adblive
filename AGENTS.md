@@ -82,7 +82,7 @@ kill switch：`/data/adb/adblive_shield_off` 存在时跳过所有 hook（hook �
 - `stopAndRemove(context)`：**先写 app 私有目录 `guard_stop`**（app 无需 root 可写，撤销授权后仍能命令守护自毁），再 su 写禁用标记 + kill + 删脚本
 - 脚本逻辑：每 10s 检查，`adb_wifi_enabled != 1` 则重写为 1；adbd 未运行或端口未监听则 `stop adbd && start adbd`，flock 防并发；启动及每轮检查 `guard_stop` 存在即 `cleanup` 自毁
 - **防僵尸设计（教训）**：守护是 setsid 独立 root 进程，卸载 app 不会杀它。ADB_X 的守护脚本无 `app_gone` 自毁 → 卸载后僵尸（实测：`adb_wifi_enabled` 每 10s 被拉回 1）。adblive 三重兜底：①卸载检测 `app_gone` 自毁 ②`guard_stop` 停止信号（覆盖撤销授权场景）③开机被 init 拉起时先查 `guard_stop`/`disabled`/`app_gone`
-- 开机自启：BootReceiver 收到 BOOT_COMPLETED/LOCKED_BOOT_COMPLETED，仅当 SharedPreferences `boot_enabled` 且 `guard_enabled` 为 true 时重新部署
+- **开机自启（方案 1 语义）**：`boot_enabled` 真正控制开机是否自启。App 部署守护时把 `boot_enabled` 同步写为 root 标记 `/data/adb/adblive_boot_enabled`（1/0）；守护脚本启动时**仅开机路径**（init 拉起、无 `manual` 参数）检查该标记，为 `0` 则退出不自启；App 手动启动带 `manual` 参数不受限（被动守护开=当前保护，开机自启开=重启后继续保护）。BootReceiver 收到 BOOT_COMPLETED/LOCKED_BOOT_COMPLETED，仅当 `boot_enabled` 且 `guard_enabled` 为 true 时重新部署（MIUI 上受自启权限限制，见 B2，主路径为 service.d 自启）
 
 ## 卸载清理（无残留）
 

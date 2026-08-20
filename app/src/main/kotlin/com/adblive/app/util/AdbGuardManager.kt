@@ -12,6 +12,7 @@ object AdbGuardManager {
     private const val PORT_FILE = "/data/adb/adblive_guard_port"
     private const val PID_FILE = "/data/local/tmp/adblive_guard.pid"
     private const val DISABLED_FILE = "/data/adb/adblive_guard_disabled"
+    private const val BOOT_ENABLED_FILE = "/data/adb/adblive_boot_enabled"
     private const val KEY_USER_DISABLED = "guard_user_disabled"
     private const val USER_DISABLED_ADB_FILE = "/data/adb/adblive_user_disabled_adb"
 
@@ -30,6 +31,14 @@ object AdbGuardManager {
             .putBoolean("guard_enabled", enabled)
             .putBoolean(KEY_USER_DISABLED, !enabled)
             .apply()
+    }
+
+    /** Write boot auto-start marker file so the guard knows whether to self-start at boot */
+    fun writeBootEnabled(context: Context, enabled: Boolean) {
+        ShellUtils.executeSu(
+            "echo " + (if (enabled) 1 else 0) + " > " + BOOT_ENABLED_FILE +
+            " && chmod 644 " + BOOT_ENABLED_FILE
+        )
     }
 
 
@@ -68,6 +77,9 @@ object AdbGuardManager {
             val b64 = Base64.encodeToString(script.toByteArray(), Base64.NO_WRAP)
             val port = readCurrentPort()
             val tmpB64 = "/data/local/tmp/adblive_b64.tmp"
+            val bootEn = context.getSharedPreferences("adblive_guard", Context.MODE_PRIVATE)
+                .getBoolean("boot_enabled", true)
+            writeBootEnabled(context, bootEn)
             val cmd = "rm -f " + DISABLED_FILE + " && " +
                 "mkdir -p " + SERVICE_DIR + " && " +
                 "echo " + port + " > " + PORT_FILE + " && chmod 644 " + PORT_FILE + " && " +
@@ -75,7 +87,7 @@ object AdbGuardManager {
                 "base64 -d " + tmpB64 + " > " + SCRIPT_PATH + " && " +
                 "rm -f " + tmpB64 + " && " +
                 "chmod 755 " + SCRIPT_PATH + " && " +
-                "setsid sh " + SCRIPT_PATH + " >/dev/null 2>&1 & " +
+                "setsid sh " + SCRIPT_PATH + " manual >/dev/null 2>&1 & " +
                 "echo deployed"
             val r = ShellUtils.executeSu(cmd, 3000)
             invalidateStateCache()
