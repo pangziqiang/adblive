@@ -1,0 +1,1 @@
+Wireless ADB protection - active Xposed shield blocks disabling wireless ADB / killing adbd, plus a passive root guard watchdog. App toggle = user's will; zero residue on uninstall.

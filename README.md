@@ -33,3 +33,17 @@ export JAVA_HOME=/usr/local/opt/openjdk@17
 * 守护：/data/adb/service.d/99_adblive_guard.sh
 * 用户意图：/data/adb/adblive_user_disabled_adb
 * 开机自启标记：/data/adb/adblive_boot_enabled
+
+---
+
+## English Overview
+
+**ADBLive** is a wireless ADB protection app for Android (single APK). It keeps wireless ADB alive so it is not accidentally turned off.
+
+* **Active Shield (Xposed/LSPosed)**: hooks and blocks the system from disabling wireless ADB (`adb_wifi_enabled=0`) or killing `adbd`
+* **Passive Guard (root)**: deploys a shell watchdog script that polls every 10s and restores wireless ADB automatically
+* **User's will respected**: turning off wireless ADB inside the app writes an intent file; guard / boot auto-start will not pull it back
+* **Boot auto-start**: redeploys the guard and restores wireless ADB after reboot
+* **Zero residue on uninstall**: all hooks, guard process and state files are cleaned up on uninstall
+
+Compatible with KernelSU / Magisk root and the LSPosed module environment. Fixed port **5555**, minSdk 30 (Android 11).

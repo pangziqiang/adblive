@@ -1,0 +1,12 @@
+#
+# ADBLive - Xposed module for wireless ADB protection
+# https://github.com/pangziqiang/adblive
+#
+name=ADBLive
+package=com.adblive.app
+author=pangziqiang
+description=无线ADB保护 - 主动盾拦截系统关闭无线ADB与杀adbd，被动守护root脚本拉回，卸载零残留。
+version=1.1.0
+versionCode=12
+minSdk=30
+maxSdk=36
