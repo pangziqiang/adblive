@@ -65,6 +65,28 @@ class Entry : IXposedHookLoadPackage {
             log("app uninstalled, cleaned shield residue")
         }
 
+        /** 事件驱动：包被卸载瞬间清盾文件，消除轮询窗口（守护未运行时兜底）。 */
+        private fun hookPackageRemoved(lpparam: LoadPackageParam) {
+            try {
+                val atClass = lpparam.classLoader.loadClass("android.app.ActivityThread")
+                val at = atClass.getMethod("currentActivityThread").invoke(null)
+                val sysCtx = atClass.getMethod("getSystemContext").invoke(at) as? Context ?: return
+                val filter = android.content.IntentFilter(android.content.Intent.ACTION_PACKAGE_REMOVED)
+                filter.addDataScheme("package")
+                sysCtx.registerReceiver(object : android.content.BroadcastReceiver() {
+                    override fun onReceive(c: Context?, intent: android.content.Intent?) {
+                        val pkg = intent?.data?.schemeSpecificPart ?: return
+                        if (pkg != MODULE_PACKAGE) return
+                        if (intent.getBooleanExtra(android.content.Intent.EXTRA_REPLACING, false)) return
+                        log("uninstall detected (event-driven), cleaning shield residue")
+                        cleanupSystemShieldResidue()
+                    }
+                }, filter, null, android.os.Handler(android.os.Looper.getMainLooper()))
+            } catch (t: Throwable) {
+                log("hookPackageRemoved failed: " + t.message)
+            }
+        }
+
         fun isShieldDisabled(): Boolean {
             val now = System.currentTimeMillis()
             if (now - lastShieldCheckMs > SHIELD_CHECK_TTL_MS) {
@@ -103,6 +125,7 @@ class Entry : IXposedHookLoadPackage {
                 log("Hooking system_server proc=" + proc)
                 KillGuard.hook(lpparam)
                 SettingsGuard.hookSystemServer(lpparam)
+                hookPackageRemoved(lpparam)
             }
             lpparam.packageName == "com.android.settings" -> {
                 log("Hooking Settings proc=" + proc)

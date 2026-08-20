@@ -121,11 +121,13 @@ object AdbGuardManager {
             "touch " + DISABLED_FILE + " && " +
             (if (safePid.isNotEmpty()) "kill " + safePid + " 2>/dev/null; " else "") +
             "pkill -f '^sh " + SCRIPT_PATH + "' 2>/dev/null; " +
-            "rm -f " + SCRIPT_PATH + " && " +
-            "rm -f " + PID_FILE + " && " +
-            "rm -f " + PORT_FILE + " && " +
-            "rm -rf /data/local/tmp/adblive_guard.lock"
-        )
+        "rm -f " + SCRIPT_PATH + " && " +
+        "rm -f " + PID_FILE + " && " +
+        "rm -f " + PORT_FILE + " && " +
+        "rm -rf /data/local/tmp/adblive_guard.lock" +
+        "; W=\$(cat /data/local/tmp/adblive_guard.watch 2>/dev/null); [ -n \"\$W\" ] && kill \$W 2>/dev/null; " +
+        "rm -f /data/local/tmp/adblive_uninstalled.sh /data/local/tmp/adblive_guard.watch"
+    )
         invalidateStateCache()
         return r.isSuccess()
     }
