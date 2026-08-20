@@ -20,7 +20,6 @@ cleanup_guard() {
     rm -f /data/adb/service.d/99_adblive_guard.sh
     rm -f /data/system/adblive_shield_armed /data/local/tmp/adblive_shield_armed /data/adb/adblive_shield_armed
     rm -f /data/system/adblive_shield_off /data/local/tmp/adblive_shield_off /data/adb/adblive_shield_off
-    rm -f /data/local/tmp/adblive_bypass
     rm -f /data/local/tmp/adblive_b64.tmp
     rm -f /data/adb/adblive_boot_enabled
     rm -f /data/adb/adblive_guard_port /data/adb/adblive_guard_disabled
@@ -77,7 +76,6 @@ PID=$(cat /data/local/tmp/adblive_guard.pid 2>/dev/null)
 rm -f /data/adb/service.d/99_adblive_guard.sh
 rm -f /data/system/adblive_shield_armed /data/local/tmp/adblive_shield_armed /data/adb/adblive_shield_armed
 rm -f /data/system/adblive_shield_off /data/local/tmp/adblive_shield_off /data/adb/adblive_shield_off
-rm -f /data/local/tmp/adblive_bypass
 rm -f /data/local/tmp/adblive_b64.tmp
 rm -f /data/adb/adblive_boot_enabled
 rm -f /data/adb/adblive_guard_port /data/adb/adblive_guard_disabled

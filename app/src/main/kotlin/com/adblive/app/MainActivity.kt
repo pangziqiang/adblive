@@ -66,13 +66,13 @@ class MainActivity : AppCompatActivity() {
     private val handler = Handler(Looper.getMainLooper())
     @Volatile private var rootOk = false
     @Volatile private var legacyShieldSwept = false
-    private var xposedOk = false
-    private var shieldOn = false
-    private var guardOn = false
-    private var adbOn = false
+    @Volatile private var xposedOk = false
+    @Volatile private var shieldOn = false
+    @Volatile private var guardOn = false
+    @Volatile private var adbOn = false
     private var adbObserver: ContentObserver? = null
     private var refreshing = false
-    private var ipText = ""
+    @Volatile private var ipText = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -228,88 +228,93 @@ class MainActivity : AppCompatActivity() {
         btnRefresh.isEnabled = false
         progress.visibility = View.VISIBLE
         Thread {
-            val ip = getLocalIp()
-            val rootNow = ShellUtils.probeRoot()
-            val xposedNow = XposedStatus.isActive(this)
-            val guardDeployed = AdbGuardManager.isScriptDeployed()
-            val guardRunning = AdbGuardManager.isGuardRunning()
+            try {
+                val ip = getLocalIp()
+                val rootNow = ShellUtils.probeRoot()
+                val xposedNow = XposedStatus.isActive(this)
+                val guardDeployed = AdbGuardManager.isScriptDeployed()
+                val guardRunning = AdbGuardManager.isGuardRunning()
 
-            val rootChanged = rootNow != rootOk
-            val adbWifiOut = if (rootNow) ShellUtils.executeSu("settings get global adb_wifi_enabled")
-                             else getSecureAdb()
-            val adbPortOut = if (rootNow) ShellUtils.executeSu("getprop service.adb.tcp.port")
-                             else adbWifiOut
-            val adbNow = if (rootNow) {
-                adbPortOut.isSuccess() && adbPortOut.output.trim() == "5555" &&
-                adbWifiOut.isSuccess() && adbWifiOut.output.trim() == "1"
-            } else {
-                adbWifiOut.isSuccess() && adbWifiOut.output.trim() == "1"
-            }
-
-            rootOk = rootNow
-            xposedOk = xposedNow
-            if (rootNow && rootChanged) {
-                ShellUtils.executeSu("pm grant com.adblive.app android.permission.WRITE_SECURE_SETTINGS")
-            }
-            if (rootNow && !legacyShieldSwept) {
-                legacyShieldSwept = true
-                // 新设计盾状态只在 /data/system；清掉旧版本残留的盾文件与 boot 标记
-                ShellUtils.executeSu(
-                    "rm -f /data/local/tmp/adblive_shield_armed /data/local/tmp/adblive_shield_off " +
-                    "/data/adb/adblive_shield_armed /data/adb/adblive_shield_off " +
-                    "/data/adb/adblive_boot_enabled"
-                )
-            }
-            val shieldActual = ShieldStateFile.exists()
-            adbOn = adbNow
-            guardOn = guardDeployed && guardRunning
-
-            runOnUiThread {
-                progress.visibility = View.GONE
-                btnRefresh.isEnabled = true
-                swipeRefresh.isRefreshing = false
-                refreshing = false
-
-                ipText = ip
-                tvIp.text = ip.ifEmpty { "--" }
-
-                val bootPref = getPref(KEY_BOOT_ENABLED, true)
-                tvBoot.text = if (bootPref) getString(R.string.boot_active) else getString(R.string.boot_inactive)
-                swBoot.isChecked = bootPref
-                cardBoot.strokeColor = getColor(if (bootPref) R.color.card_border_on else R.color.card_border_off)
-                tintCircle(icBoot, bootPref)
-
-                tvAdb.text = if (adbOn) getString(R.string.adb_active) else getString(R.string.adb_inactive)
-                swAdb.isChecked = adbOn
-                cardAdb.strokeColor = getColor(if (adbOn) R.color.card_border_on else R.color.card_border_off)
-                tintCircle(icAdb, adbOn)
-
-                tvGuard.text = if (guardOn) getString(R.string.guard_active) else getString(R.string.guard_inactive)
-                swGuard.isChecked = guardOn
-                cardGuard.strokeColor = getColor(if (guardOn) R.color.card_border_on else R.color.card_border_off)
-                tintCircle(icGuard, guardOn)
-
-                val shieldUi = shieldActual
-                val shieldActive = shieldUi && xposedOk
-                tvShield.text = if (shieldActive) getString(R.string.shield_active) else getString(R.string.shield_inactive)
-                swShield.isChecked = shieldActive
-                shieldOn = shieldActive
-                cardXposed.strokeColor = getColor(if (shieldActive) R.color.card_border_on else R.color.card_border_off)
-                tintCircle(icShield, shieldActive)
-
-                tvRoot.text = if (rootOk) getString(R.string.root_active) else getString(R.string.root_inactive)
-                swRoot.isChecked = rootOk
-                cardRoot.strokeColor = getColor(if (rootOk) R.color.card_border_on else R.color.card_border_off)
-                tintCircle(icRoot, rootOk)
-
-                if (rootChanged) {
-                    appendLog("root " + (if (rootOk) "granted" else "lost"))
+                val rootChanged = rootNow != rootOk
+                val adbWifiOut = if (rootNow) ShellUtils.executeSu("settings get global adb_wifi_enabled")
+                                 else getSecureAdb()
+                val adbPortOut = if (rootNow) ShellUtils.executeSu("getprop service.adb.tcp.port")
+                                 else adbWifiOut
+                val adbNow = if (rootNow) {
+                    adbPortOut.isSuccess() && adbPortOut.output.trim() == "5555" &&
+                    adbWifiOut.isSuccess() && adbWifiOut.output.trim() == "1"
+                } else {
+                    adbWifiOut.isSuccess() && adbWifiOut.output.trim() == "1"
                 }
-                if (!rootOk && ShellUtils.suHidden()) {
-                    appendLog("提示: su 被 KernelSU 隐藏，点 Root 卡片可一键重启解锁")
+
+                rootOk = rootNow
+                xposedOk = xposedNow
+                if (rootNow && rootChanged) {
+                    ShellUtils.executeSu("pm grant com.adblive.app android.permission.WRITE_SECURE_SETTINGS")
                 }
-                appendLog("guard: script=" + (if (guardDeployed) "ok" else "none") +
-                          " run=" + (if (guardRunning) "yes" else "no"))
+                if (rootNow && !legacyShieldSwept) {
+                    legacyShieldSwept = true
+                    // 新设计盾状态只在 /data/system；清掉旧版本残留的盾文件
+                    ShellUtils.executeSu(
+                        "rm -f /data/local/tmp/adblive_shield_armed /data/local/tmp/adblive_shield_off " +
+                        "/data/adb/adblive_shield_armed /data/adb/adblive_shield_off"
+                    )
+                }
+                val shieldActual = ShieldStateFile.exists()
+                adbOn = adbNow
+                guardOn = guardDeployed && guardRunning
+
+                runOnUiThread {
+                    ipText = ip
+                    tvIp.text = ip.ifEmpty { "--" }
+
+                    val bootPref = getPref(KEY_BOOT_ENABLED, true)
+                    tvBoot.text = if (bootPref) getString(R.string.boot_active) else getString(R.string.boot_inactive)
+                    swBoot.isChecked = bootPref
+                    cardBoot.strokeColor = getColor(if (bootPref) R.color.card_border_on else R.color.card_border_off)
+                    tintCircle(icBoot, bootPref)
+
+                    tvAdb.text = if (adbOn) getString(R.string.adb_active) else getString(R.string.adb_inactive)
+                    swAdb.isChecked = adbOn
+                    cardAdb.strokeColor = getColor(if (adbOn) R.color.card_border_on else R.color.card_border_off)
+                    tintCircle(icAdb, adbOn)
+
+                    tvGuard.text = if (guardOn) getString(R.string.guard_active) else getString(R.string.guard_inactive)
+                    swGuard.isChecked = guardOn
+                    cardGuard.strokeColor = getColor(if (guardOn) R.color.card_border_on else R.color.card_border_off)
+                    tintCircle(icGuard, guardOn)
+
+                    val shieldUi = shieldActual
+                    val shieldActive = shieldUi && xposedOk
+                    tvShield.text = if (shieldActive) getString(R.string.shield_active) else getString(R.string.shield_inactive)
+                    swShield.isChecked = shieldActive
+                    shieldOn = shieldActive
+                    cardXposed.strokeColor = getColor(if (shieldActive) R.color.card_border_on else R.color.card_border_off)
+                    tintCircle(icShield, shieldActive)
+
+                    tvRoot.text = if (rootOk) getString(R.string.root_active) else getString(R.string.root_inactive)
+                    swRoot.isChecked = rootOk
+                    cardRoot.strokeColor = getColor(if (rootOk) R.color.card_border_on else R.color.card_border_off)
+                    tintCircle(icRoot, rootOk)
+
+                    if (rootChanged) {
+                        appendLog("root " + (if (rootOk) "granted" else "lost"))
+                    }
+                    if (!rootOk && ShellUtils.suHidden()) {
+                        appendLog("提示: su 被 KernelSU 隐藏，点 Root 卡片可一键重启解锁")
+                    }
+                    appendLog("guard: script=" + (if (guardDeployed) "ok" else "none") +
+                              " run=" + (if (guardRunning) "yes" else "no"))
+                }
+            } catch (t: Throwable) {
+                appendLog("refresh error: " + t.message)
+            } finally {
+                runOnUiThread {
+                    refreshing = false
+                    btnRefresh.isEnabled = true
+                    progress.visibility = View.GONE
+                    swipeRefresh.isRefreshing = false
+                }
             }
         }.start()
     }

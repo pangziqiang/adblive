@@ -3,7 +3,6 @@ package com.adblive.app.xposed
 import android.content.ContentResolver
 import android.os.Bundle
 import android.os.Binder
-import android.os.UserHandle
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedHelpers
 import de.robv.android.xposed.callbacks.XC_LoadPackage.LoadPackageParam
@@ -12,14 +11,12 @@ import java.util.concurrent.atomic.AtomicBoolean
 object SettingsGuard {
     private const val KEY = "adb_wifi_enabled"
     private const val OUR_PACKAGE = "com.adblive.app"
-    private const val BYPASS_FILE = "/data/local/tmp/adblive_bypass"
     private val registeredSys = AtomicBoolean(false)
     private var ourUid = 0
 
     private fun shouldBlock(): Boolean {
         if (Entry.isShieldDisabled()) return false
         if (isCallerOurs()) return false
-        if (hasBypass()) return false
         return true
     }
 
@@ -27,12 +24,6 @@ object SettingsGuard {
         if (ourUid == 0) return false
         val uid = Binder.getCallingUid()
         return uid == ourUid
-    }
-
-    private fun hasBypass(): Boolean {
-        return try {
-            java.io.File(BYPASS_FILE).exists()
-        } catch (_: Throwable) { false }
     }
 
     fun hookSystemServer(lpparam: LoadPackageParam) {
