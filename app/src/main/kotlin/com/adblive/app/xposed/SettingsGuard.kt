@@ -2,6 +2,8 @@ package com.adblive.app.xposed
 
 import android.content.ContentResolver
 import android.os.Bundle
+import android.os.Binder
+import android.os.UserHandle
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedHelpers
 import de.robv.android.xposed.callbacks.XC_LoadPackage.LoadPackageParam
@@ -9,14 +11,31 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 object SettingsGuard {
     private const val KEY = "adb_wifi_enabled"
+    private const val OUR_PACKAGE = "com.adblive.app"
     private val registeredSys = AtomicBoolean(false)
+    private var ourUid = 0
 
     private fun shouldBlock(): Boolean {
-        return !Entry.isShieldDisabled()
+        if (Entry.isShieldDisabled()) return false
+        if (isCallerOurs()) return false
+        return true
+    }
+
+    private fun isCallerOurs(): Boolean {
+        if (ourUid == 0) return false
+        val uid = Binder.getCallingUid()
+        return uid == ourUid
     }
 
     fun hookSystemServer(lpparam: LoadPackageParam) {
         if (!registeredSys.compareAndSet(false, true)) return
+        try {
+            val appCtx = de.robv.android.xposed.XposedHelpers.callStaticMethod(
+                de.robv.android.xposed.XposedHelpers.findClass("android.app.ActivityThread", null),
+                "currentApplication") as? android.content.Context
+            ourUid = appCtx?.packageManager?.getApplicationInfo(OUR_PACKAGE, 0)?.uid ?: 0
+        } catch (_: Throwable) { }
+        Entry.log("SettingsGuard ourUid=" + ourUid)
         Entry.log("SettingsGuard mounting system_server guards")
         hookSettingsProviderPut()
         hookGlobalPutInt()
@@ -157,4 +176,3 @@ object SettingsGuard {
             v.equals("off", true) || v.equals("no", true)
     }
 }
-
