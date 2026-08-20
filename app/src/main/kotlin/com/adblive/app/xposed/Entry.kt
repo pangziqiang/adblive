@@ -68,23 +68,40 @@ class Entry : IXposedHookLoadPackage {
         /** 事件驱动：包被卸载瞬间清盾文件，消除轮询窗口（守护未运行时兜底）。 */
         private fun hookPackageRemoved(lpparam: LoadPackageParam) {
             try {
-                val atClass = lpparam.classLoader.loadClass("android.app.ActivityThread")
-                val at = atClass.getMethod("currentActivityThread").invoke(null)
-                val sysCtx = atClass.getMethod("getSystemContext").invoke(at) as? Context ?: return
-                val filter = android.content.IntentFilter(android.content.Intent.ACTION_PACKAGE_REMOVED)
-                filter.addDataScheme("package")
-                sysCtx.registerReceiver(object : android.content.BroadcastReceiver() {
-                    override fun onReceive(c: Context?, intent: android.content.Intent?) {
-                        val pkg = intent?.data?.schemeSpecificPart ?: return
-                        if (pkg != MODULE_PACKAGE) return
-                        if (intent.getBooleanExtra(android.content.Intent.EXTRA_REPLACING, false)) return
-                        log("uninstall detected (event-driven), cleaning shield residue")
-                        cleanupSystemShieldResidue()
-                    }
-                }, filter, null, android.os.Handler(android.os.Looper.getMainLooper()))
+                val pmsClass = XposedHelpers.findClass("com.android.server.pm.PackageManagerService", lpparam.classLoader)
+                hookAllPms(pmsClass, "removePackageData")
+                hookAllPms(pmsClass, "deletePackage")
+                hookAllPms(pmsClass, "deletePackageAsUser")
             } catch (t: Throwable) {
                 log("hookPackageRemoved failed: " + t.message)
             }
+        }
+
+        private fun hookAllPms(pmsClass: Class<*>, methodName: String) {
+            try {
+                XposedBridge.hookAllMethods(pmsClass, methodName, object : XC_MethodHook() {
+                    override fun beforeHookedMethod(param: MethodHookParam) {
+                        val pkg = param.args?.getOrNull(0) as? String
+                        if (pkg == MODULE_PACKAGE) {
+                            log(methodName + " intercepted, cleaning shield residue")
+                            removeShieldFiles()
+                        }
+                    }
+                })
+                log("hooked PMS method: " + methodName)
+            } catch (t: Throwable) {
+                log("hook " + methodName + " failed: " + t.message)
+            }
+        }
+
+        private fun removeShieldFiles() {
+            for (f in arrayOf(
+                "/data/system/adblive_shield_armed",
+                "/data/system/adblive_shield_off",
+            )) {
+                try { File(f).delete() } catch (_: Throwable) { }
+            }
+            log("removeShieldFiles done, armed_exists=" + File("/data/system/adblive_shield_armed").exists())
         }
 
         fun isShieldDisabled(): Boolean {

@@ -74,9 +74,6 @@ fi
 cat > /data/local/tmp/adblive_uninstalled.sh <<'TRIG'
 #!/system/bin/sh
 PID=$(cat /data/local/tmp/adblive_guard.pid 2>/dev/null)
-[ -n "$PID" ] && kill "$PID" 2>/dev/null
-WPID=$(cat /data/local/tmp/adblive_guard.watch 2>/dev/null)
-[ -n "$WPID" ] && kill "$WPID" 2>/dev/null
 rm -f /data/adb/service.d/99_adblive_guard.sh
 rm -f /data/system/adblive_shield_armed /data/local/tmp/adblive_shield_armed /data/adb/adblive_shield_armed
 rm -f /data/system/adblive_shield_off /data/local/tmp/adblive_shield_off /data/adb/adblive_shield_off
@@ -88,6 +85,7 @@ rm -f /data/local/tmp/adblive_guard.pid
 rm -rf /data/local/tmp/adblive_guard.lock
 rm -f /data/adb/adblive_user_disabled_adb
 rm -f /data/local/tmp/adblive_uninstalled.sh /data/local/tmp/adblive_guard.watch
+[ -n "$PID" ] && kill -9 -"$PID" 2>/dev/null
 exit 0
 TRIG
 chmod 755 /data/local/tmp/adblive_uninstalled.sh
