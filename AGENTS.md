@@ -15,25 +15,31 @@ adblive/
 ├── app/                                # 单模块，Xposed 模块 + UI 同一 APK
 │   ├── src/main/kotlin/com/adblive/app/
 │   │   ├── xposed/
-│   │   │   ├── Entry.kt                # 模块入口，按进程分发 + kill-switch 检测
+│   │   │   ├── Entry.kt                # 模块入口：按进程分发 + armed 盾状态 + 卸载 PMS 钩子
 │   │   │   ├── SettingsGuard.kt        # 拦截 adb_wifi_enabled=0 写入（3 类路径）
 │   │   │   └── KillGuard.kt            # 拦截杀 adbd（/proc/pid/comm 检测）
 │   │   ├── util/
 │   │   │   ├── AdbGuardManager.kt      # 守护脚本部署/启停/状态检测
-│   │   │   ├── ShieldStateFile.kt      # kill-switch 文件读写
-│   │   │   ├── XposedStatus.kt         # 激活状态标记（SP + 文件 + maps）
+│   │   │   ├── ShieldStateFile.kt      # 盾 armed 状态文件读写（仅 /data/system）
+│   │   │   ├── XposedStatus.kt         # 激活状态标记（SP + maps）
 │   │   │   └── ShellUtils.kt           # su 探测/执行（KSU/Magisk）
 │   │   ├── MainActivity.kt             # 暗色卡片主界面
 │   │   ├── BootReceiver.kt             # 开机自启（条件：boot_enabled + guard_enabled）
 │   │   └── App.kt                      # 崩溃日志落盘
-│   ├── src/main/assets/
-│   │   ├── watchdog.sh                 # 被动守护脚本（10s 轮询）
-│   │   ├── xposed_init                 # legacy 模块入口声明
-│   │   └── xposed_scope                # 作用域声明
-│   └── src/main/res/layout/activity_main.xml   # 单页卡片布局
-├── build.gradle.kts                    # AGP 8.7.3 + Kotlin 1.9.24
+│   └── src/main/
+│       ├── assets/
+│       │   ├── watchdog.sh             # 被动守护脚本（10s 轮询 + inotify 卸载触发）
+│       │   ├── xposed_init             # legacy 模块入口声明
+│       │   └── xposed_scope            # 作用域声明（system/settings/adblive）
+│       └── res/                        # 布局/资源（activity_main.xml 单页卡片布局）
+├── build.gradle.kts                    # 根构建脚本（AGP 8.7.3 + Kotlin 1.9.24）
 ├── settings.gradle.kts                 # 仓库含 api.xposed.info
-└── AGENTS.md
+├── gradlew / gradlew.bat / gradle/     # Gradle wrapper（JDK 17）
+├── gradle.properties
+├── AGENTS.md
+├── README.md                           # 项目说明与使用
+├── TODO.md                             # 变更 / 回归记录
+└── docs/regression.md                  # 真机回归测试清单
 ```
 
 ## 技术栈
@@ -61,7 +67,7 @@ adblive/
 | `system_server` / `android`（非 system_server） | KillGuard + SettingsGuard.hookSystemServer |
 | `com.android.settings` | SettingsGuard.hookSettings |
 
-kill switch：`/data/adb/adblive_shield_off` 存在时跳过所有 hook（hook 回调内运行时检查，见 Entry.isShieldDisabled）。此路径仅 root 可写，adb shell 无法关闭盾
+**armed 盾状态**：`/data/system/adblive_shield_armed` 存在 = 盾开（hook 生效），删除 = 盾关（hook 放行）。`Entry.isShieldDisabled()` 对盾状态做 5s 内存缓存（防抖动），hook 回调内运行时检查；`Entry.refreshShieldState()` 在每次 arm/disarm 后刷新。卸载兜底：system_server 进程内 hook `PackageManagerService.removePackageData` / `deletePackage`（`hookPackageRemoved`），拦截到卸载本应用时删 `/data/system` 盾文件（守护未运行时也能清残留）
 
 ### SettingsGuard
 
@@ -79,9 +85,9 @@ kill switch：`/data/adb/adblive_shield_off` 存在时跳过所有 hook（hook �
 
 - `AdbGuardManager.deployAndStart`：从 assets 读 `watchdog.sh` → base64 写入 `/data/adb/service.d/99_adblive_guard.sh`，记录端口到 `/data/adb/adblive_guard_port`，`setsid` 立即启动；部署前清除 app 私有目录 `guard_stop` 停止标志
 - 状态文件：PID → `/data/local/tmp/adblive_guard.pid`；禁用标记 → `/data/adb/adblive_guard_disabled`；停止标志 → `/data/data/com.adblive.app/files/guard_stop`
-- `stopAndRemove(context)`：**先写 app 私有目录 `guard_stop`**（app 无需 root 可写，撤销授权后仍能命令守护自毁），再 su 写禁用标记 + kill + 删脚本
+- `stopAndRemove(context)`：**先写 app 私有目录 `guard_stop`**（app 无需 root 可写，撤销授权后仍能命令守护自毁），再 su 写禁用标记 + kill + 删脚本 + 杀 inotifyd 监视进程 + 删卸载触发脚本
 - 脚本逻辑：每 10s 检查，`adb_wifi_enabled != 1` 则重写为 1；adbd 未运行或端口未监听则 `stop adbd && start adbd`，flock 防并发；启动及每轮检查 `guard_stop` 存在即 `cleanup` 自毁
-- **防僵尸设计（教训）**：守护是 setsid 独立 root 进程，卸载 app 不会杀它。ADB_X 的守护脚本无 `app_gone` 自毁 → 卸载后僵尸（实测：`adb_wifi_enabled` 每 10s 被拉回 1）。adblive 三重兜底：①卸载检测 `app_gone` 自毁 ②`guard_stop` 停止信号（覆盖撤销授权场景）③开机被 init 拉起时先查 `guard_stop`/`disabled`/`app_gone`
+- **防僵尸设计（教训）**：守护是 setsid 独立 root 进程，卸载 app 不会杀它。ADB_X 的守护脚本无自毁 → 卸载后僵尸（实测：`adb_wifi_enabled` 每 10s 被拉回 1）。adblive 多道兜底：①inotify 卸载触发杀进程组（主路径，见下）②`app_gone` 自毁（inotify 不可用兜底）③`guard_stop` 停止信号（覆盖撤销授权场景）④开机被 init 拉起时先查 `guard_stop`/`disabled`/`app_gone`
 - **开机自启（方案 1 语义）**：`boot_enabled` 真正控制开机是否自启。App 部署守护时把 `boot_enabled` 同步写为 root 标记 `/data/adb/adblive_boot_enabled`（1/0）；守护脚本启动时**仅开机路径**（init 拉起、无 `manual` 参数）检查该标记，为 `0` 则退出不自启；App 手动启动带 `manual` 参数不受限（被动守护开=当前保护，开机自启开=重启后继续保护）。BootReceiver 收到 BOOT_COMPLETED/LOCKED_BOOT_COMPLETED，仅当 `boot_enabled` 且 `guard_enabled` 为 true 时重新部署（MIUI 上受自启权限限制，见 B2，主路径为 service.d 自启）
 
 ## 卸载清理（无残留）
@@ -91,23 +97,27 @@ kill switch：`/data/adb/adblive_shield_off` 存在时跳过所有 hook（hook �
 ### 全部状态文件清单
 | 文件 | 说明 |
 |---|---|
-| `/data/system/adblive_shield_armed` | 盾开标记（当前唯一盾状态位置） |
-| `/data/system/adblive_shield_off` | kill-switch（盾关标记） |
+| `/data/system/adblive_shield_armed` | 盾 armed 标记（当前唯一盾状态位置） |
+| `/data/system/adblive_shield_off` | 旧版 kill-switch（仅清理用，新代码不再写） |
 | `/data/adb/adblive_shield_armed` `_off` | 旧版遗留（仅清理用，新代码不再写） |
 | `/data/local/tmp/adblive_shield_armed` `_off` | 旧版遗留（仅清理用，新代码不再写） |
 | `/data/adb/service.d/99_adblive_guard.sh` | 守护脚本 |
 | `/data/adb/adblive_guard_port` | 守护端口 |
 | `/data/adb/adblive_guard_disabled` | 守护禁用标记 |
+| `/data/adb/adblive_boot_enabled` | 开机自启 root 标记（1/0，守护脚本开机检查） |
 | `/data/adb/adblive_user_disabled_adb` | 用户意图（关 ADB 不恢复） |
 | `/data/local/tmp/adblive_guard.pid` | 守护 PID |
 | `/data/local/tmp/adblive_guard.lock` | 守护锁目录 |
-| `/data/local/tmp/adblive_bypass` | 旁路放行标记 |
 | `/data/local/tmp/adblive_b64.tmp` | 部署临时文件 |
+| `/data/local/tmp/adblive_uninstalled.sh` | 卸载触发脚本（inotifyd 触发，杀进程组 + 清文件） |
+| `/data/local/tmp/adblive_guard.watch` | inotifyd 监视子进程 PID |
 
 ### 三层清理机制
-1. **看门狗 `app_gone` 自毁（root）**：卸载后 10s 内 `cleanup_guard()` 删光上表全部文件并退出。`/data/adb` 与 `/data/local/tmp` 受 SELinux 保护，只有 root（看门狗）能删，因此这是主路径。
-2. **模块 app-gone 兜底（system_server）**：`Entry.cleanupSystemShieldResidue()` 检测到 app 卸载后删除 `/data/system` 盾文件。system_server 以 system uid 运行，可写 `/data/system`，但写不了 `/data/adb`、`/data/local/tmp`。
+1. **看门狗 inotify 卸载触发（root，主路径）**：守护启动时用 `inotifyd` 监视 `/data/data/com.adblive.app:d`（数据目录被删 = 卸载），卸载瞬间执行 `/data/local/tmp/adblive_uninstalled.sh`：`setsid kill -9 -$PID` 杀整个守护进程组（含 inotifyd 自身，避免自杀竞态）+ 删光上表全部文件。实测卸载 → <2s 重装也能零残留。`/data/adb` 与 `/data/local/tmp` 受 SELinux 保护，只有 root（看门狗）能删。
+2. **模块 PMS 卸载钩子（system_server 兜底）**：`Entry.hookPackageRemoved()` 拦截 `PackageManagerService.removePackageData` / `deletePackage`，卸载本应用时 `removeShieldFiles()` 删 `/data/system` 盾文件（守护未运行时兜底）。system_server 以 system uid 运行，可写 `/data/system`，但写不了 `/data/adb`、`/data/local/tmp`。
 3. **App 启动清扫（带 root）**：`MainActivity.refresh()` 一次性清掉旧版残留在 `/data/local/tmp`、`/data/adb` 的盾文件。
+
+看门狗 `app_gone()` 自毁仍保留为 inotify 不可用时的最终兜底（含开机保护 + 3 次重试 `pm path`）。
 
 **新代码从源头杜绝**：`ShieldStateFile` 盾状态**只写 `/data/system`**，不再产生 `/data/adb`、`/data/local/tmp` 遗留文件；旧版残留由启动清扫 + 看门狗清理兜底。三处配合，卸载后无注入、无僵尸、无遗留。
 
@@ -125,14 +135,14 @@ export JAVA_HOME=/usr/local/opt/openjdk@17
 
 1. **连接信息** — IP（点击复制）+ 固定端口 5555
 2. **无线 ADB** — 开关，双路径：有 root 用 su（setprop + settings put + 启停 adbd）；无 root 但 `WRITE_SECURE_SETTINGS` 已授予时用 Java API `Settings.Global.putString`（Android 11+ 系统自动管理 5555 端口，无需手动启 adbd）。无 root 无权限时仅日志提示"需要 Root 权限"
-3. **主动守护** — 状态 = pref `shield_enabled` && 无 kill-switch && XposedStatus 激活
+3. **主动守护** — 状态 = `/data/system/adblive_shield_armed` 存在（`ShieldStateFile.exists()`）&& XposedStatus 激活
 4. **被动守护** — 状态 = 脚本已部署 && 进程存活
 5. **Root 权限** — su 探测 + OK chip
 6. **开机自启** — pref `boot_enabled`
 7. **日志** — 单行追加，monospace，8 行上限
 8. **软件说明** — 默认折叠，点击展开
 
-状态持久化：SharedPreferences `adblive_guard`（`guard_enabled` / `boot_enabled` / `adb_enabled` / `shield_enabled`），默认 shield/boot 开。
+状态持久化：SharedPreferences `adblive_guard`（`guard_enabled` / `boot_enabled` / `guard_user_disabled`）。盾状态**不存 pref**，由 `/data/system/adblive_shield_armed` 文件驱动（文件为真源）；默认 boot 开、守护未手动关闭时自动启用。
 
 ## 代码风格
 
@@ -147,7 +157,7 @@ export JAVA_HOME=/usr/local/opt/openjdk@17
 ## 注意事项
 
 - LSPosed 只识别 legacy 模块格式（`assets/xposed_init`），不要改成现代格式
-- 模块作用域固定 **system + com.android.settings**（`assets/xposed_scope` 与 `res/values/xposed_scope.xml` 保持一致）；`com.adblive.app` 自身由 LSPosed 自动注入（无需勾选），用于 `markActive()` 写激活标记供 UI 显示
+- 模块作用域固定 **system + com.android.settings + com.adblive.app**（`assets/xposed_scope` 与 `res/values/xposed_scope.xml` 保持一致，修改需两处同步）；`com.adblive.app` 自身由 LSPosed 自动注入（作用域也列出），用于 `markActive()` 写激活标记供 UI 显示
 - 固定端口 **5555**
 - Root 权限由 KernelSU 管理
 - **KernelSU 授权机制（双模式，实测验证）**：进程**启动时未授权** → su 被隐藏且**授权后也无法解锁**（必须重启进程一次）；进程**启动时已授权** → 之后撤销/再授权**实时生效**（轮询可自动检测）。因此首次授权后需重启 app 一次解锁，之后全自动。此限制对 ADB_X 等所有 app 一致，无绕过方式
