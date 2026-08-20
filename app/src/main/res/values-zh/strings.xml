@@ -15,12 +15,12 @@
     <string name="about_title">软件说明</string>
     <string name="about_expand">展开说明</string>
     <string name="about_collapse">收起说明</string>
-    <string name="about_desc">ADBLive 是一款无线 ADB 守护工具，确保设备上的无线 ADB 持续可用。它分两层保护：被动守护只需要 Root，负责在 adbd 被杀后自动将它重新拉起；主动守护则需要 LSPosed 框架，用来阻止系统关闭无线 ADB。ADB 端口固定为 5555。</string>
+    <string name="about_desc">ADBLive 是一款无线 ADB 守护工具，确保设备上的无线 ADB 持续可用。它分两层保护：被动守护只需要 Root，负责在 adbd 被杀后自动将它重新拉起；主动守护则需要 LSPosed 框架，用来阻止系统关闭无线 ADB。ADB 端口固定为 5555。启用主动守护：打开 LSPosed，启用 ADBLive 模块，勾选「系统框架 system」「com.android.settings」两项（自身应用会自动注入），然后重启手机。</string>
 
     <string name="shield_label">主动守护</string>
     <string name="shield_active">Hook 已生效</string>
     <string name="shield_inactive">未在 LSPosed 启用</string>
-    <string name="shield_desc">需要 LSPosed 框架；拦截系统关闭无线 ADB 或结束 adbd。</string>
+    <string name="shield_desc">需要 LSPosed：作用域勾选 system + com.android.settings（自身应用自动注入）并重启。拦截系统关闭无线 ADB 或结束 adbd。</string>
 
     <string name="root_label">Root 权限</string>
     <string name="root_active">已授权</string>

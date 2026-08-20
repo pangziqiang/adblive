@@ -3,5 +3,6 @@
     <string-array name="xposed_scope">
         <item>system</item>
         <item>com.android.settings</item>
+        <item>com.adblive.app</item>
     </string-array>
 </resources>

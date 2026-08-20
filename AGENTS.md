@@ -61,7 +61,7 @@ adblive/
 | `system_server` / `android`（非 system_server） | KillGuard + SettingsGuard.hookSystemServer |
 | `com.android.settings` | SettingsGuard.hookSettings |
 
-kill switch：`/data/local/tmp/adblive_shield_off` 存在时跳过所有 hook（hook 回调内运行时检查，见 Entry.isShieldDisabled）。
+kill switch：`/data/adb/adblive_shield_off` 存在时跳过所有 hook（hook 回调内运行时检查，见 Entry.isShieldDisabled）。此路径仅 root 可写，adb shell 无法关闭盾
 
 ### SettingsGuard
 
@@ -77,10 +77,11 @@ kill switch：`/data/local/tmp/adblive_shield_off` 存在时跳过所有 hook（
 
 ## 被动守护（Guard）
 
-- `AdbGuardManager.deployAndStart`：从 assets 读 `watchdog.sh` → base64 写入 `/data/adb/service.d/99_adblive_guard.sh`，记录端口到 `/data/adb/adblive_guard_port`，`setsid` 立即启动
-- 状态文件：PID → `/data/local/tmp/adblive_guard.pid`；禁用标记 → `/data/adb/adblive_guard_disabled`
-- `stopAndRemove`：写禁用标记 + kill + 删脚本
-- 脚本逻辑：每 10s 检查，`adb_wifi_enabled != 1` 则重写为 1；adbd 未运行或端口未监听则 `stop adbd && start adbd`，flock 防并发
+- `AdbGuardManager.deployAndStart`：从 assets 读 `watchdog.sh` → base64 写入 `/data/adb/service.d/99_adblive_guard.sh`，记录端口到 `/data/adb/adblive_guard_port`，`setsid` 立即启动；部署前清除 app 私有目录 `guard_stop` 停止标志
+- 状态文件：PID → `/data/local/tmp/adblive_guard.pid`；禁用标记 → `/data/adb/adblive_guard_disabled`；停止标志 → `/data/data/com.adblive.app/files/guard_stop`
+- `stopAndRemove(context)`：**先写 app 私有目录 `guard_stop`**（app 无需 root 可写，撤销授权后仍能命令守护自毁），再 su 写禁用标记 + kill + 删脚本
+- 脚本逻辑：每 10s 检查，`adb_wifi_enabled != 1` 则重写为 1；adbd 未运行或端口未监听则 `stop adbd && start adbd`，flock 防并发；启动及每轮检查 `guard_stop` 存在即 `cleanup` 自毁
+- **防僵尸设计（教训）**：守护是 setsid 独立 root 进程，卸载 app 不会杀它。ADB_X 的守护脚本无 `app_gone` 自毁 → 卸载后僵尸（实测：`adb_wifi_enabled` 每 10s 被拉回 1）。adblive 三重兜底：①卸载检测 `app_gone` 自毁 ②`guard_stop` 停止信号（覆盖撤销授权场景）③开机被 init 拉起时先查 `guard_stop`/`disabled`/`app_gone`
 - 开机自启：BootReceiver 收到 BOOT_COMPLETED/LOCKED_BOOT_COMPLETED，仅当 SharedPreferences `boot_enabled` 且 `guard_enabled` 为 true 时重新部署
 
 ## 构建
@@ -96,7 +97,7 @@ export JAVA_HOME=/usr/local/opt/openjdk@17
 单页卡片式布局（`activity_main.xml`），暗色终端风格（背景 `#0A0E14`），monospace 字体，teal 主色（`#0D9488`）。卡片自上而下：
 
 1. **连接信息** — IP（点击复制）+ 固定端口 5555
-2. **无线 ADB** — 开关，setprop/service 启停，端口 5555
+2. **无线 ADB** — 开关，双路径：有 root 用 su（setprop + settings put + 启停 adbd）；无 root 但 `WRITE_SECURE_SETTINGS` 已授予时用 Java API `Settings.Global.putString`（Android 11+ 系统自动管理 5555 端口，无需手动启 adbd）。无 root 无权限时仅日志提示"需要 Root 权限"
 3. **主动守护** — 状态 = pref `shield_enabled` && 无 kill-switch && XposedStatus 激活
 4. **被动守护** — 状态 = 脚本已部署 && 进程存活
 5. **Root 权限** — su 探测 + OK chip
@@ -119,9 +120,14 @@ export JAVA_HOME=/usr/local/opt/openjdk@17
 ## 注意事项
 
 - LSPosed 只识别 legacy 模块格式（`assets/xposed_init`），不要改成现代格式
-- 模块作用域固定 **system + com.android.settings**（`assets/xposed_scope` 与 `res/values/xposed_scope.xml` 保持一致）
+- 模块作用域固定 **system + com.android.settings**（`assets/xposed_scope` 与 `res/values/xposed_scope.xml` 保持一致）；`com.adblive.app` 自身由 LSPosed 自动注入（无需勾选），用于 `markActive()` 写激活标记供 UI 显示
 - 固定端口 **5555**
 - Root 权限由 KernelSU 管理
+- **KernelSU 授权机制（双模式，实测验证）**：进程**启动时未授权** → su 被隐藏且**授权后也无法解锁**（必须重启进程一次）；进程**启动时已授权** → 之后撤销/再授权**实时生效**（轮询可自动检测）。因此首次授权后需重启 app 一次解锁，之后全自动。此限制对 ADB_X 等所有 app 一致，无绕过方式
+- **MainActivity 轮询设计**：前台运行（onResume 启动/onPause 停止），Thread 实现；未授权时 3s 探测（等授权）、已授权后 15s 降频（探测撤销）；root 状态变化时自动 `refresh()`。比 ADB_X（固定 3s 协程 + 轮询内查 guard 脚本）更省
+- **IP 获取用 `ConnectivityManager.getLinkProperties(activeNetwork)`**（需 `ACCESS_NETWORK_STATE` 权限）。不要用 `NetworkInterface.getNetworkInterfaces()`——在 MIUI 实测返回空
+- **非 root 开关无线 ADB**：`Settings.Global.putString(contentResolver, "adb_wifi_enabled", ...)` 走 SettingsProvider 直接检查 uid 权限；用 shell 命令 `settings put` 会被 SettingsService 层拒绝（实测 SecurityException）。`WRITE_SECURE_SETTINGS` 需 `pm grant` 授予（**普通 `adb shell pm grant` 会因 shell 用户权限不足而静默失败，必须 su/root 执行**），卸载重装后清除需重新授予。**有 root 用户主路径是 KernelSU 授权，无需 pm grant**
+- Root 卡片在 `suHidden()`（`/system/bin/su` 不可见）时点击弹出自定义暗色 dialog（`dialog_root_hint.xml`，88% 屏宽），提供一键重启解锁；`restartApp()` 用 AlarmManager（普通 `set()`，不用 `setExact`——后者在 targetSdk 31+ 需 `SCHEDULE_EXACT_ALARM` 权限）+ killProcess
 - 首次启用模块时 LSPosed 会弹出重启按钮，点击重启即可激活
 - release 构建不签名正式 key，直接装 debug 签名的 arm64 APK 即可
 

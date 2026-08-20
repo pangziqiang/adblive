@@ -1,10 +1,14 @@
 package com.adblive.app
 
+import android.app.AlarmManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.database.ContentObserver
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.Process
 import android.provider.Settings
 import android.view.View
 import android.widget.ImageButton
@@ -17,11 +21,11 @@ import androidx.core.content.ContextCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.materialswitch.MaterialSwitch
+import com.adblive.app.xposed.Entry
 import com.adblive.app.util.AdbGuardManager
 import com.adblive.app.util.ShieldStateFile
 import com.adblive.app.util.ShellUtils
 import com.adblive.app.util.XposedStatus
-import java.net.NetworkInterface
 
 class MainActivity : AppCompatActivity() {
 
@@ -31,10 +35,8 @@ class MainActivity : AppCompatActivity() {
         const val KEY_BOOT_ENABLED = "boot_enabled"
         const val KEY_ADB_ENABLED = "adb_enabled"
         const val KEY_SHIELD_ENABLED = "shield_enabled"
-        const val SHIELD_OFF_FILE = "/data/local/tmp/adblive_shield_off"
     }
 
-    private lateinit var tvXposed: TextView
     private lateinit var tvRoot: TextView
     private lateinit var tvGuard: TextView
     private lateinit var tvAdb: TextView
@@ -42,6 +44,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvIp: TextView
     private lateinit var tvPort: TextView
     private lateinit var tvVersion: TextView
+    private lateinit var tvAdbShieldHint: TextView
     private lateinit var swRoot: MaterialSwitch
     private lateinit var tvBoot: TextView
     private lateinit var tvShield: TextView
@@ -67,7 +70,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var toolbar: Toolbar
 
     private val handler = Handler(Looper.getMainLooper())
-    private var rootOk = false
+    @Volatile private var rootOk = false
     private var xposedOk = false
     private var shieldOn = false
     private var guardOn = false
@@ -84,7 +87,6 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayShowTitleEnabled(false)
 
-        tvXposed = findViewById(R.id.tvXposed)
         tvRoot = findViewById(R.id.tvRoot)
         tvGuard = findViewById(R.id.tvGuard)
         tvAdb = findViewById(R.id.tvAdb)
@@ -94,6 +96,7 @@ class MainActivity : AppCompatActivity() {
         tvAboutDesc = findViewById(R.id.tvAboutDesc)
         tvAboutToggle = findViewById(R.id.tvAboutToggle)
         tvVersion = findViewById(R.id.tvVersion)
+        tvAdbShieldHint = findViewById(R.id.tvAdbShieldHint)
         swRoot = findViewById(R.id.swRoot)
         tvBoot = findViewById(R.id.tvBoot)
         tvShield = findViewById(R.id.tvXposed)
@@ -126,6 +129,8 @@ class MainActivity : AppCompatActivity() {
 
         tvAboutToggle.setOnClickListener { toggleAbout() }
 
+        cardRoot.setOnClickListener { onRootCardClick() }
+
         tvVersion.text = "ver " + BuildConfig.VERSION_NAME + " (code " + BuildConfig.VERSION_CODE + ")"
         appendLog("ADBLive started")
     }
@@ -137,12 +142,63 @@ class MainActivity : AppCompatActivity() {
             override fun onChange(selfChange: Boolean) { refresh() }
         }.also { contentResolver.registerContentObserver(uri, false, it) }
         refresh()
+        startRootPoller()
+        maybeAutoEnableGuard()
     }
 
     override fun onPause() {
         super.onPause()
         adbObserver?.let { contentResolver.unregisterContentObserver(it) }
         adbObserver = null
+        stopRootPoller()
+    }
+
+    @Volatile private var pollerRunning = false
+
+    private fun startRootPoller() {
+        if (pollerRunning) return
+        pollerRunning = true
+        val t = Thread {
+            var last = rootOk
+            while (pollerRunning) {
+                val delay = if (last) 15000L else 3000L
+                try {
+                    Thread.sleep(delay)
+                } catch (_: InterruptedException) { break }
+                val now = try { ShellUtils.probeRoot() } catch (_: Exception) { last }
+                if (now != last) {
+                    last = now
+                    if (now) maybeAutoEnableGuard()
+                    runOnUiThread { refresh() }
+                }
+            }
+        }
+        t.isDaemon = true
+        t.start()
+    }
+
+    private fun onRootGranted() {
+        maybeAutoEnableGuard()
+    }
+
+    private fun maybeAutoEnableGuard() {
+        if (!AdbGuardManager.shouldAutoEnableGuard(this@MainActivity)) return
+        Thread {
+            try {
+                if (!ShellUtils.probeRoot()) return@Thread
+                if (AdbGuardManager.isGuardRunning()) return@Thread
+                val ok = AdbGuardManager.deployAndStart(this@MainActivity)
+                if (ok) AdbGuardManager.setGuardEnabled(this@MainActivity, true)
+                if (ok) runOnUiThread {
+                    appendLog("auto guard deployed & started")
+                    refresh()
+                }
+            } catch (_: Exception) { }
+        }.start()
+    }
+
+    private fun stopRootPoller() {
+        pollerRunning = false
     }
 
     private fun appendLog(msg: String) {
@@ -150,15 +206,17 @@ class MainActivity : AppCompatActivity() {
         val cur = tvLog.text.toString()
         val next = if (cur.isBlank()) "[" + ts + "] " + msg
                    else cur + System.lineSeparator() + "[" + ts + "] " + msg
-        tvLog.text = next
+        val lines = next.split(System.lineSeparator())
+        tvLog.text = if (lines.size > 8) lines.takeLast(8).joinToString(System.lineSeparator()) else next
     }
 
     private fun getLocalIp(): String {
         return try {
-            NetworkInterface.getNetworkInterfaces().asSequence()
-                .filter { !it.isLoopback && it.isUp }
-                .flatMap { it.inetAddresses.asSequence() }
-                .filter { !it.isLoopbackAddress && !it.hostAddress.contains(":") }
+            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            val link = cm.getLinkProperties(cm.activeNetwork) ?: return ""
+            link.linkAddresses.asSequence()
+                .map { it.address }
+                .filter { it is java.net.Inet4Address && !it.isLoopbackAddress }
                 .map { it.hostAddress }
                 .firstOrNull() ?: ""
         } catch (_: Exception) { "" }
@@ -183,14 +241,22 @@ class MainActivity : AppCompatActivity() {
             val guardDeployed = AdbGuardManager.isScriptDeployed()
             val guardRunning = AdbGuardManager.isGuardRunning()
 
-            // Preserve old values so we can log transitions.
             val rootChanged = rootNow != rootOk
-            val adbPortOut = ShellUtils.executeSu("getprop service.adb.tcp.port")
-            val adbNow = adbPortOut.isSuccess() && adbPortOut.output.trim() == "5555"
+            val adbWifiOut = if (rootNow) ShellUtils.executeSu("settings get global adb_wifi_enabled")
+                             else getSecureAdb()
+            val adbPortOut = if (rootNow) ShellUtils.executeSu("getprop service.adb.tcp.port")
+                             else adbWifiOut
+            val adbNow = if (rootNow) {
+                adbPortOut.isSuccess() && adbPortOut.output.trim() == "5555" &&
+                adbWifiOut.isSuccess() && adbWifiOut.output.trim() == "1"
+            } else {
+                adbWifiOut.isSuccess() && adbWifiOut.output.trim() == "1"
+            }
 
             rootOk = rootNow
             xposedOk = xposedNow
-            shieldOn = !ShieldStateFile.exists() && getPref(KEY_SHIELD_ENABLED, true)
+            val shieldActual = ShieldStateFile.exists()
+            shieldOn = !shieldActual && getPref(KEY_SHIELD_ENABLED, true)
             adbOn = adbNow
             guardOn = guardDeployed && guardRunning
 
@@ -213,25 +279,20 @@ class MainActivity : AppCompatActivity() {
                 swAdb.isChecked = adbOn
                 cardAdb.strokeColor = getColor(if (adbOn) R.color.card_border_on else R.color.card_border_off)
                 tintCircle(icAdb, adbOn)
+                tvAdbShieldHint.visibility = if (shieldOn) View.VISIBLE else View.GONE
 
                 tvGuard.text = if (guardOn) getString(R.string.guard_active) else getString(R.string.guard_inactive)
                 swGuard.isChecked = guardOn
                 cardGuard.strokeColor = getColor(if (guardOn) R.color.card_border_on else R.color.card_border_off)
                 tintCircle(icGuard, guardOn)
 
-                val prefShield = getPref(KEY_SHIELD_ENABLED, true)
-                val shieldActual = ShieldStateFile.exists()
-                val shieldUi = prefShield && !shieldActual
-                tvShield.text = when {
-                    !prefShield -> getString(R.string.shield_inactive)
-                    shieldActual -> getString(R.string.shield_inactive)
-                    xposedOk -> getString(R.string.shield_active)
-                    else -> getString(R.string.shield_inactive)
-                }
-                swShield.isChecked = shieldUi
-                shieldOn = shieldUi
-                cardXposed.strokeColor = getColor(if (shieldUi) R.color.card_border_on else R.color.card_border_off)
-                tintCircle(icShield, shieldUi)
+                val shieldUi = !shieldActual
+                val shieldActive = shieldUi && xposedOk
+                tvShield.text = if (shieldActive) getString(R.string.shield_active) else getString(R.string.shield_inactive)
+                swShield.isChecked = shieldActive
+                shieldOn = shieldActive
+                cardXposed.strokeColor = getColor(if (shieldActive) R.color.card_border_on else R.color.card_border_off)
+                tintCircle(icShield, shieldActive)
 
                 tvRoot.text = if (rootOk) getString(R.string.root_active) else getString(R.string.root_inactive)
                 swRoot.isChecked = rootOk
@@ -241,10 +302,62 @@ class MainActivity : AppCompatActivity() {
                 if (rootChanged) {
                     appendLog("root " + (if (rootOk) "granted" else "lost"))
                 }
+                if (!rootOk && ShellUtils.suHidden()) {
+                    appendLog("提示: su 被 KernelSU 隐藏，点 Root 卡片可一键重启解锁")
+                }
                 appendLog("guard: script=" + (if (guardDeployed) "ok" else "none") +
                           " run=" + (if (guardRunning) "yes" else "no"))
             }
         }.start()
+    }
+
+    private fun onRootCardClick() {
+        if (rootOk) {
+            refresh()
+            return
+        }
+        val hidden = ShellUtils.suHidden()
+        if (!hidden) {
+            val d = android.app.AlertDialog.Builder(this)
+                .setTitle("Root 权限")
+                .setMessage("未检测到 Root。请先在 KernelSU/Magisk 中授权本应用。")
+                .setPositiveButton("知道了", null)
+                .show()
+            d.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setTextColor(getColor(R.color.teal))
+            d.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setTypeface(android.graphics.Typeface.MONOSPACE)
+            d.setCanceledOnTouchOutside(true)
+            return
+        }
+        val dialog = android.app.Dialog(this)
+        dialog.setContentView(R.layout.dialog_root_hint)
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dialog.findViewById<android.widget.TextView>(R.id.txtHint)?.text =
+            "su 被 KernelSU 隐藏：本应用启动时未授权，内核会锁定隐藏状态，授权后也需重启一次进程才生效。\n\n" +
+            "跨过这一次后，授权/撤销将全部实时自动检测，无需再手动刷新。\n\n" +
+            "请先在 KernelSU 中授权本应用，然后点「重启应用」完成解锁（仅需一次）。"
+        dialog.findViewById<android.widget.TextView>(R.id.btnCancel)?.setOnClickListener { dialog.dismiss() }
+        dialog.findViewById<android.widget.TextView>(R.id.btnRestart)?.setOnClickListener {
+            dialog.dismiss()
+            restartApp()
+        }
+        dialog.show()
+        val w = resources.displayMetrics.widthPixels
+        dialog.window?.setLayout((w * 0.88).toInt(), android.view.WindowManager.LayoutParams.WRAP_CONTENT)
+    }
+
+    private fun restartApp() {
+        try {
+            val i = packageManager.getLaunchIntentForPackage(packageName)
+            if (i == null) { Process.killProcess(Process.myPid()); return }
+            i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+            val pi = PendingIntent.getActivity(this, 0, i, PendingIntent.FLAG_IMMUTABLE)
+            val am = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            am.set(AlarmManager.RTC, System.currentTimeMillis() + 250, pi)
+            finish()
+            Process.killProcess(Process.myPid())
+        } catch (e: Exception) {
+            Process.killProcess(Process.myPid())
+        }
     }
 
     private fun tintCircle(iv: ImageView, active: Boolean) {
@@ -253,17 +366,27 @@ class MainActivity : AppCompatActivity() {
             if (active) R.color.on_teal_container else R.color.text_secondary))
     }
 
+    // #12: add 500ms delay before deploy to let guard_stop propagate
     private fun toggleGuard(on: Boolean) {
-        setGuardEnabled(this, on)
+        if (!rootOk) {
+            appendLog("需要 Root 权限才能开关被动守护")
+            showRootRequiredHint()
+            swGuard.isChecked = !on
+            return
+        }
+        AdbGuardManager.setGuardEnabled(this, on)
         Thread {
+            if (!on) {
+                AdbGuardManager.stopAndRemove(this)
+                guardOn = false
+                runOnUiThread { appendLog("guard stopped") }
+                // #12: wait for old guard process to see guard_stop and exit
+                Thread.sleep(500)
+            }
             if (on) {
                 val ok = AdbGuardManager.deployAndStart(this)
                 guardOn = ok
                 runOnUiThread { appendLog("guard " + (if (ok) "deployed & started" else "deploy failed")) }
-            } else {
-                AdbGuardManager.stopAndRemove()
-                guardOn = false
-                runOnUiThread { appendLog("guard stopped") }
             }
             runOnUiThread {
                 tvGuard.text = if (guardOn) getString(R.string.guard_active) else getString(R.string.guard_inactive)
@@ -272,11 +395,6 @@ class MainActivity : AppCompatActivity() {
                 tintCircle(icGuard, guardOn)
             }
         }.start()
-    }
-
-    private fun setGuardEnabled(context: Context, enabled: Boolean) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().putBoolean(KEY_GUARD_ENABLED, enabled).apply()
     }
 
     private fun setPref(key: String, enabled: Boolean) {
@@ -300,51 +418,119 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // #7: refresh shield state in-memory after arm/disarm
     private fun toggleShield(on: Boolean) {
+        if (!xposedOk) {
+            appendLog("需要 LSPosed 启用本模块才能激活主动守护")
+            showLsposedHint()
+            swShield.isChecked = !on
+            return
+        }
         setPref(KEY_SHIELD_ENABLED, on)
         Thread {
-            if (on) {
-                ShieldStateFile.enable()
-                shieldOn = true
-                runOnUiThread { appendLog("active shield on (blocks disable)") }
-            } else {
-                ShieldStateFile.disable()
-                shieldOn = false
-                runOnUiThread { appendLog("active shield off (adb may be toggled)") }
-            }
+            val ok = if (on) ShieldStateFile.arm() else ShieldStateFile.disarm()
+            Entry.refreshShieldState()
             runOnUiThread {
-                tvShield.text = if (on) getString(R.string.shield_active) else getString(R.string.shield_inactive)
-                swShield.isChecked = on
-                cardXposed.strokeColor = getColor(if (on) R.color.card_border_on else R.color.card_border_off)
-                tintCircle(icShield, on)
+                appendLog(if (on) "active shield on" else "active shield off")
+                if (!ok) appendLog("kill-switch 写入失败（可能无 Root），盾状态未真正切换")
+            }
+            val active = !ShieldStateFile.exists() && xposedOk
+            shieldOn = active
+            runOnUiThread {
+                tvShield.text = if (active) getString(R.string.shield_active) else getString(R.string.shield_inactive)
+                swShield.isChecked = active
+                cardXposed.strokeColor = getColor(if (active) R.color.card_border_on else R.color.card_border_off)
+                tintCircle(icShield, active)
             }
         }.start()
     }
 
+    // #3: move setPref into Thread after shell command succeeds
     private fun toggleAdb(on: Boolean) {
-        setPref(KEY_ADB_ENABLED, on)
+        val canSecure = checkSelfPermission(android.Manifest.permission.WRITE_SECURE_SETTINGS) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (!rootOk && !canSecure) {
+            appendLog("需要 Root 权限才能开关无线 ADB")
+            showRootRequiredHint()
+            swAdb.isChecked = !on
+            return
+        }
         Thread {
+            val secureOk = if (rootOk) true else putSecureAdb(on)
             if (on) {
-                ShellUtils.executeSu("setprop service.adb.tcp.port 5555")
-                ShellUtils.executeSu("settings put global adb_wifi_enabled 1")
-                ShellUtils.executeSu("stop adbd && start adbd")
-                runOnUiThread { appendLog("adb enabling on port 5555") }
+                // User wants ADB on: clear intent file so guard resumes
+                AdbGuardManager.clearUserDisabledAdb()
+                if (rootOk) {
+                    ShellUtils.executeSu("setprop service.adb.tcp.port 5555")
+                    ShellUtils.executeSu("settings put global adb_wifi_enabled 1")
+                    ShellUtils.executeSu("stop adbd && start adbd")
+                }
+                setPref(KEY_ADB_ENABLED, true)
+                runOnUiThread { appendLog(if (secureOk) "adb enabling on port 5555" else "adb enable failed (no permission)") }
             } else {
-                ShellUtils.executeSu("setprop service.adb.tcp.port 0")
-                ShellUtils.executeSu("settings put global adb_wifi_enabled 0")
-                runOnUiThread { appendLog("adb disabled") }
+                // User wants ADB off: write intent file so guard won't restore
+                AdbGuardManager.writeUserDisabledAdb()
+                if (rootOk) {
+                    ShellUtils.executeSu("setprop service.adb.tcp.port 0; content call --uri content://settings/global --method PUT_global --arg adb_wifi_enabled --extra value:s:0")
+                }
+                setPref(KEY_ADB_ENABLED, false)
+                runOnUiThread { appendLog(if (secureOk) "adb disabled" else "adb disable failed (no permission)") }
             }
             Thread.sleep(1000)
-            val adbR = ShellUtils.executeSu("getprop service.adb.tcp.port")
-            adbOn = adbR.isSuccess() && adbR.output.trim() == "5555"
+            val adbW = if (rootOk) ShellUtils.executeSu("settings get global adb_wifi_enabled")
+                       else getSecureAdb()
+            val adbR = if (rootOk) ShellUtils.executeSu("getprop service.adb.tcp.port")
+                       else adbW
+            val ip = getLocalIp()
+            adbOn = if (rootOk) {
+                adbR.isSuccess() && adbR.output.trim() == "5555" &&
+                adbW.isSuccess() && adbW.output.trim() == "1"
+            } else {
+                adbW.isSuccess() && adbW.output.trim() == "1"
+            }
             runOnUiThread {
+                ipText = ip
+                tvIp.text = ip.ifEmpty { "--" }
                 tvAdb.text = if (adbOn) getString(R.string.adb_active) else getString(R.string.adb_inactive)
                 swAdb.isChecked = adbOn
                 cardAdb.strokeColor = getColor(if (adbOn) R.color.card_border_on else R.color.card_border_off)
                 tintCircle(icAdb, adbOn)
+                tvAdbShieldHint.visibility = if (shieldOn) View.VISIBLE else View.GONE
                 appendLog("adb port now " + (adbR.output.trim().ifEmpty { "0" }))
             }
         }.start()
+    }
+
+    private fun showRootRequiredHint() {
+        showHintDialog("需要 Root 权限",
+            "请在 KernelSU/Magisk 中授权本应用后再操作。\n\n有 Root 后无线 ADB 开关、被动守护等全部功能即可正常使用。")
+    }
+
+    private fun showLsposedHint() {
+        showHintDialog("需要 LSPosed",
+            "主动守护依赖 Xposed 拦截，需要在 LSPosed 中启用本模块。\n\n作用域勾选 system + com.android.settings（自身应用自动注入），启用后重启生效。")
+    }
+
+    private fun showHintDialog(title: String, message: String) {
+        val dialog = android.app.Dialog(this)
+        dialog.setContentView(R.layout.dialog_hint)
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dialog.findViewById<android.widget.TextView>(R.id.txtTitle)?.text = title
+        dialog.findViewById<android.widget.TextView>(R.id.txtHint)?.text = message
+        dialog.findViewById<android.widget.TextView>(R.id.btnOk)?.setOnClickListener { dialog.dismiss() }
+        dialog.show()
+        val w = resources.displayMetrics.widthPixels
+        dialog.window?.setLayout((w * 0.88).toInt(), android.view.WindowManager.LayoutParams.WRAP_CONTENT)
+    }
+
+    private fun putSecureAdb(on: Boolean): Boolean {
+        return try {
+            Settings.Global.putString(contentResolver, "adb_wifi_enabled", if (on) "1" else "0")
+        } catch (_: Exception) { false }
+    }
+
+    private fun getSecureAdb(): ShellUtils.Result {
+        val v = try { Settings.Global.getString(contentResolver, "adb_wifi_enabled") } catch (_: Exception) { null }
+        return if (v != null) ShellUtils.Result(0, v) else ShellUtils.Result(-1, "")
     }
 
     private fun toggleAbout() {
