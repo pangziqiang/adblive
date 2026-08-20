@@ -12,12 +12,14 @@ import java.util.concurrent.atomic.AtomicBoolean
 object SettingsGuard {
     private const val KEY = "adb_wifi_enabled"
     private const val OUR_PACKAGE = "com.adblive.app"
+    private const val BYPASS_FILE = "/data/local/tmp/adblive_bypass"
     private val registeredSys = AtomicBoolean(false)
     private var ourUid = 0
 
     private fun shouldBlock(): Boolean {
         if (Entry.isShieldDisabled()) return false
         if (isCallerOurs()) return false
+        if (hasBypass()) return false
         return true
     }
 
@@ -25,6 +27,12 @@ object SettingsGuard {
         if (ourUid == 0) return false
         val uid = Binder.getCallingUid()
         return uid == ourUid
+    }
+
+    private fun hasBypass(): Boolean {
+        return try {
+            java.io.File(BYPASS_FILE).exists()
+        } catch (_: Throwable) { false }
     }
 
     fun hookSystemServer(lpparam: LoadPackageParam) {
@@ -37,7 +45,6 @@ object SettingsGuard {
         } catch (_: Throwable) { }
         Entry.log("SettingsGuard ourUid=" + ourUid)
         Entry.log("SettingsGuard mounting system_server guards")
-        hookSettingsProviderPut()
         hookGlobalPutInt()
         hookGlobalPutString()
         hookTransportCall(lpparam.classLoader)
@@ -48,34 +55,7 @@ object SettingsGuard {
         hookTransportCall(lpparam.classLoader)
     }
 
-    private fun hookSettingsProviderPut() {
-        val clazz = try {
-            XposedHelpers.findClass("com.android.providers.settings.SettingsProvider", null)
-        } catch (t: Throwable) { Entry.log("SettingsGuard findClass SettingsProvider failed: " + t.message); return }
-        var hooked = false
-        for (sig in arrayOf(
-            arrayOf(String::class.java, String::class.java, String::class.java, String::class.java, Boolean::class.javaPrimitiveType),
-            arrayOf(String::class.java, String::class.java, String::class.java, String::class.java, Boolean::class.javaPrimitiveType, Boolean::class.javaPrimitiveType),
-        )) {
-            try {
-                XposedHelpers.findAndHookMethod(clazz, "put", *sig, object : XC_MethodHook() {
-                    override fun beforeHookedMethod(param: MethodHookParam) {
-                        try {
-                            if (!shouldBlock()) return
-                            val name = param.args[1] as? String ?: return
-                            val value = param.args[2] as? String ?: return
-                            if (name == KEY && isOff(value)) {
-                                Entry.log("SettingsGuard blocked SettingsProvider.put(" + KEY + ")")
-                                param.throwable = SecurityException("adb_wifi_enabled is protected by ADBLive shield")
-                            }
-                        } catch (_: Throwable) { }
-                    }
-                })
-                hooked = true
-            } catch (_: Throwable) { }
-        }
-        if (hooked) Entry.log("SettingsGuard hooked SettingsProvider.put") else Entry.log("SettingsGuard SettingsProvider.put hook failed (no matching method)")
-    }
+
 
     private fun hookGlobalPutInt() {
         val clazz = try {

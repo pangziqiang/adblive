@@ -84,6 +84,33 @@ kill switch：`/data/adb/adblive_shield_off` 存在时跳过所有 hook（hook �
 - **防僵尸设计（教训）**：守护是 setsid 独立 root 进程，卸载 app 不会杀它。ADB_X 的守护脚本无 `app_gone` 自毁 → 卸载后僵尸（实测：`adb_wifi_enabled` 每 10s 被拉回 1）。adblive 三重兜底：①卸载检测 `app_gone` 自毁 ②`guard_stop` 停止信号（覆盖撤销授权场景）③开机被 init 拉起时先查 `guard_stop`/`disabled`/`app_gone`
 - 开机自启：BootReceiver 收到 BOOT_COMPLETED/LOCKED_BOOT_COMPLETED，仅当 SharedPreferences `boot_enabled` 且 `guard_enabled` 为 true 时重新部署
 
+## 卸载清理（无残留）
+
+**设计原则（实测教训）**：用户主动关闭开关或卸载后，设备上必须**零残留**——无注入钩子、无僵尸守护、无遗留文件。旧版 `disable_shield_hooks` 会在 `/data/system`、`/data/adb`、`/data/local/tmp` 三处都写 kill-switch，卸载漏删导致残留（实测需手动清理，教训：`/data/adb/adblive_shield_off` 曾漏网）。现做三方面根治：
+
+### 全部状态文件清单
+| 文件 | 说明 |
+|---|---|
+| `/data/system/adblive_shield_armed` | 盾开标记（当前唯一盾状态位置） |
+| `/data/system/adblive_shield_off` | kill-switch（盾关标记） |
+| `/data/adb/adblive_shield_armed` `_off` | 旧版遗留（仅清理用，新代码不再写） |
+| `/data/local/tmp/adblive_shield_armed` `_off` | 旧版遗留（仅清理用，新代码不再写） |
+| `/data/adb/service.d/99_adblive_guard.sh` | 守护脚本 |
+| `/data/adb/adblive_guard_port` | 守护端口 |
+| `/data/adb/adblive_guard_disabled` | 守护禁用标记 |
+| `/data/adb/adblive_user_disabled_adb` | 用户意图（关 ADB 不恢复） |
+| `/data/local/tmp/adblive_guard.pid` | 守护 PID |
+| `/data/local/tmp/adblive_guard.lock` | 守护锁目录 |
+| `/data/local/tmp/adblive_bypass` | 旁路放行标记 |
+| `/data/local/tmp/adblive_b64.tmp` | 部署临时文件 |
+
+### 三层清理机制
+1. **看门狗 `app_gone` 自毁（root）**：卸载后 10s 内 `cleanup_guard()` 删光上表全部文件并退出。`/data/adb` 与 `/data/local/tmp` 受 SELinux 保护，只有 root（看门狗）能删，因此这是主路径。
+2. **模块 app-gone 兜底（system_server）**：`Entry.cleanupSystemShieldResidue()` 检测到 app 卸载后删除 `/data/system` 盾文件。system_server 以 system uid 运行，可写 `/data/system`，但写不了 `/data/adb`、`/data/local/tmp`。
+3. **App 启动清扫（带 root）**：`MainActivity.refresh()` 一次性清掉旧版残留在 `/data/local/tmp`、`/data/adb` 的盾文件。
+
+**新代码从源头杜绝**：`ShieldStateFile` 盾状态**只写 `/data/system`**，不再产生 `/data/adb`、`/data/local/tmp` 遗留文件；旧版残留由启动清扫 + 看门狗清理兜底。三处配合，卸载后无注入、无僵尸、无遗留。
+
 ## 构建
 
 ```bash

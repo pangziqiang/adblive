@@ -19,6 +19,14 @@
 - [x] #13 isShieldDisabled 日志精简
 - [x] #14 SettingsGuard 启动日志修正
 
+### 卸载无残留（本轮）
+- [x] 排查旧版三位置残留（`/data/system`、`/data/adb`、`/data/local/tmp` 的 `adblive_shield_off`）
+- [x] watchdog `cleanup_guard()`/`disable_shield_hooks()` 补齐 `/data/adb` 盾文件清理
+- [x] 模块 `Entry.cleanupSystemShieldResidue()` 卸载后清 `/data/system` 盾文件（看门狗未跑时兜底）
+- [x] `ShieldStateFile` 盾状态只写 `/data/system`，杜绝 `/data/adb`、`/data/local/tmp` 新遗留
+- [x] `MainActivity` 启动带 root 一次性清扫旧版残留盾文件
+- [x] 实测：小米14 卸载残留手动清空，安装最新版后环境干净
+
 ---
 
 ## 待讨论优化
