@@ -1,6 +1,13 @@
 #!/system/bin/sh
 # adblive passive guard - watchdog.sh
 
+# 开机自启控制：仅开机时（init 拉起、无 manual 参数）检查 boot_enabled 标记。
+# 标记为 0 → 不开机自启，直接退出；app 手动启动（带 manual 参数）不受此限制。
+if [ "$1" != "manual" ] && [ "$(cat /data/adb/adblive_boot_enabled 2>/dev/null)" = "0" ]; then
+    log -t adblive_guard "boot auto-start disabled, exiting"
+    exit 0
+fi
+
 app_gone() {
     # 开机早期 PackageManager 未就绪，pm path 可能误报 app 已卸载 → 禁止此时自毁。
     # 仅当系统完全开机后才可信，并重试 pm path 排除瞬时不稳（B1 修复）。
@@ -22,6 +29,7 @@ cleanup_guard() {
     rm -f /data/system/adblive_shield_off /data/local/tmp/adblive_shield_off /data/adb/adblive_shield_off
     rm -f /data/local/tmp/adblive_bypass
     rm -f /data/local/tmp/adblive_b64.tmp
+    rm -f /data/adb/adblive_boot_enabled
     rm -f /data/adb/adblive_guard_port /data/adb/adblive_guard_disabled
     rm -f /data/local/tmp/adblive_guard.pid
     rm -rf /data/local/tmp/adblive_guard.lock
@@ -30,6 +38,16 @@ cleanup_guard() {
 
 disable_shield_hooks() {
     rm -f /data/system/adblive_shield_armed /data/local/tmp/adblive_shield_armed /data/adb/adblive_shield_armed
+}
+
+# true if $1 is a live watchdog process (not a recycled PID / zombie)
+guard_alive() {
+    p="$1"
+    [ -n "$p" ] || return 1
+    kill -0 "$p" 2>/dev/null || return 1
+    grep -q '99_adblive_guard\.sh' "/proc/$p/cmdline" 2>/dev/null || return 1
+    grep -q '^State:[[:space:]]*Z' "/proc/$p/status" 2>/dev/null && return 1
+    return 0
 }
 
 if [ -f /data/adb/adblive_guard_disabled ]; then
@@ -55,7 +73,7 @@ PORT=$(getprop service.adb.tcp.port 2>/dev/null)
 
 LOCKDIR=/data/local/tmp/adblive_guard.lock
 if ! mkdir $LOCKDIR 2>/dev/null; then
-    if [ -f $LOCKDIR/pid ] && kill -0 "$(cat $LOCKDIR/pid 2>/dev/null)" 2>/dev/null && ! grep -q '^State:.Z' /proc/$(cat $LOCKDIR/pid 2>/dev/null)/status 2>/dev/null; then
+    if [ -f $LOCKDIR/pid ] && guard_alive "$(cat $LOCKDIR/pid 2>/dev/null)"; then
         log -t adblive_guard "another instance running, exiting"
         exit 0
     fi
@@ -67,7 +85,7 @@ trap 'rm -rf $LOCKDIR' EXIT
 
 if [ -f /data/local/tmp/adblive_guard.pid ]; then
     OLD=$(cat /data/local/tmp/adblive_guard.pid 2>/dev/null)
-    if [ -n "$OLD" ] && kill -0 "$OLD" 2>/dev/null; then
+    if guard_alive "$OLD"; then
         exit 0
     fi
 fi

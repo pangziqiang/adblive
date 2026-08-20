@@ -249,10 +249,11 @@ class MainActivity : AppCompatActivity() {
             }
             if (rootNow && !legacyShieldSwept) {
                 legacyShieldSwept = true
-                // 新设计盾状态只在 /data/system；清掉旧版本残留在 /data/local/tmp 和 /data/adb 的盾文件
+                // 新设计盾状态只在 /data/system；清掉旧版本残留的盾文件与 boot 标记
                 ShellUtils.executeSu(
                     "rm -f /data/local/tmp/adblive_shield_armed /data/local/tmp/adblive_shield_off " +
-                    "/data/adb/adblive_shield_armed /data/adb/adblive_shield_off"
+                    "/data/adb/adblive_shield_armed /data/adb/adblive_shield_off " +
+                    "/data/adb/adblive_boot_enabled"
                 )
             }
             val shieldActual = ShieldStateFile.exists()
@@ -407,6 +408,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun toggleBoot(on: Boolean) {
         setPref(KEY_BOOT_ENABLED, on)
+        AdbGuardManager.writeBootEnabled(this, on)
         runOnUiThread {
             tvBoot.text = if (on) getString(R.string.boot_active) else getString(R.string.boot_inactive)
             swBoot.isChecked = on
