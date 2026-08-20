@@ -33,7 +33,6 @@ class MainActivity : AppCompatActivity() {
         const val PREFS = "adblive_guard"
         const val KEY_GUARD_ENABLED = "guard_enabled"
         const val KEY_BOOT_ENABLED = "boot_enabled"
-        const val KEY_ADB_ENABLED = "adb_enabled"
         const val KEY_SHIELD_ENABLED = "shield_enabled"
     }
 
@@ -42,9 +41,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvAdb: TextView
     private lateinit var tvLog: TextView
     private lateinit var tvIp: TextView
-    private lateinit var tvPort: TextView
     private lateinit var tvVersion: TextView
-    private lateinit var tvAdbShieldHint: TextView
     private lateinit var swRoot: MaterialSwitch
     private lateinit var tvBoot: TextView
     private lateinit var tvShield: TextView
@@ -92,11 +89,9 @@ class MainActivity : AppCompatActivity() {
         tvAdb = findViewById(R.id.tvAdb)
         tvLog = findViewById(R.id.tvLog)
         tvIp = findViewById(R.id.tvIp)
-        tvPort = findViewById(R.id.tvPort)
         tvAboutDesc = findViewById(R.id.tvAboutDesc)
         tvAboutToggle = findViewById(R.id.tvAboutToggle)
         tvVersion = findViewById(R.id.tvVersion)
-        tvAdbShieldHint = findViewById(R.id.tvAdbShieldHint)
         swRoot = findViewById(R.id.swRoot)
         tvBoot = findViewById(R.id.tvBoot)
         tvShield = findViewById(R.id.tvXposed)
@@ -177,10 +172,6 @@ class MainActivity : AppCompatActivity() {
         t.start()
     }
 
-    private fun onRootGranted() {
-        maybeAutoEnableGuard()
-    }
-
     private fun maybeAutoEnableGuard() {
         if (!AdbGuardManager.shouldAutoEnableGuard(this@MainActivity)) return
         Thread {
@@ -256,7 +247,6 @@ class MainActivity : AppCompatActivity() {
             rootOk = rootNow
             xposedOk = xposedNow
             val shieldActual = ShieldStateFile.exists()
-            shieldOn = !shieldActual && getPref(KEY_SHIELD_ENABLED, true)
             adbOn = adbNow
             guardOn = guardDeployed && guardRunning
 
@@ -279,7 +269,6 @@ class MainActivity : AppCompatActivity() {
                 swAdb.isChecked = adbOn
                 cardAdb.strokeColor = getColor(if (adbOn) R.color.card_border_on else R.color.card_border_off)
                 tintCircle(icAdb, adbOn)
-                tvAdbShieldHint.visibility = if (shieldOn) View.VISIBLE else View.GONE
 
                 tvGuard.text = if (guardOn) getString(R.string.guard_active) else getString(R.string.guard_inactive)
                 swGuard.isChecked = guardOn
@@ -430,13 +419,11 @@ class MainActivity : AppCompatActivity() {
         Thread {
             val ok = if (on) ShieldStateFile.arm() else ShieldStateFile.disarm()
             Entry.refreshShieldState()
-            runOnUiThread {
-                appendLog(if (on) "active shield on" else "active shield off")
-                if (!ok) appendLog("kill-switch 写入失败（可能无 Root），盾状态未真正切换")
-            }
             val active = !ShieldStateFile.exists() && xposedOk
             shieldOn = active
             runOnUiThread {
+                appendLog(if (on) "active shield on" else "active shield off")
+                if (!ok) appendLog("kill-switch 写入失败（可能无 Root），盾状态未真正切换")
                 tvShield.text = if (active) getString(R.string.shield_active) else getString(R.string.shield_inactive)
                 swShield.isChecked = active
                 cardXposed.strokeColor = getColor(if (active) R.color.card_border_on else R.color.card_border_off)
@@ -464,15 +451,13 @@ class MainActivity : AppCompatActivity() {
                     ShellUtils.executeSu("settings put global adb_wifi_enabled 1")
                     ShellUtils.executeSu("stop adbd && start adbd")
                 }
-                setPref(KEY_ADB_ENABLED, true)
                 runOnUiThread { appendLog(if (secureOk) "adb enabling on port 5555" else "adb enable failed (no permission)") }
             } else {
                 // User wants ADB off: write intent file so guard won't restore
                 AdbGuardManager.writeUserDisabledAdb()
                 if (rootOk) {
-                    ShellUtils.executeSu("setprop service.adb.tcp.port 0; content call --uri content://settings/global --method PUT_global --arg adb_wifi_enabled --extra value:s:0")
+                    ShellUtils.executeSu("setprop service.adb.tcp.port 0; settings put global adb_wifi_enabled 0")
                 }
-                setPref(KEY_ADB_ENABLED, false)
                 runOnUiThread { appendLog(if (secureOk) "adb disabled" else "adb disable failed (no permission)") }
             }
             Thread.sleep(1000)
@@ -494,7 +479,6 @@ class MainActivity : AppCompatActivity() {
                 swAdb.isChecked = adbOn
                 cardAdb.strokeColor = getColor(if (adbOn) R.color.card_border_on else R.color.card_border_off)
                 tintCircle(icAdb, adbOn)
-                tvAdbShieldHint.visibility = if (shieldOn) View.VISIBLE else View.GONE
                 appendLog("adb port now " + (adbR.output.trim().ifEmpty { "0" }))
             }
         }.start()

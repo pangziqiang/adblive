@@ -32,17 +32,6 @@ object AdbGuardManager {
             .apply()
     }
 
-    fun enableWirelessAdbNow(): Boolean {
-        val port = readCurrentPort()
-        val r = ShellUtils.executeSu(
-            "settings put global adb_wifi_enabled 1; " +
-            "setprop service.adb.tcp.port " + port + "; " +
-            "stop adbd; start adbd; " +
-            "echo done",
-            3000
-        )
-        return r.isSuccess()
-    }
 
     fun isScriptDeployed(): Boolean {
         val now = System.currentTimeMillis()
@@ -69,22 +58,7 @@ object AdbGuardManager {
         return pg.isSuccess() && pg.output.trim().isNotEmpty()
     }
 
-    fun startGuardProcess(): Boolean {
-        val r = ShellUtils.executeSu(
-            "rm -f " + DISABLED_FILE + " && setsid sh " + SCRIPT_PATH + " >/dev/null 2>&1 & echo started",
-            2000
-        )
-        invalidateStateCache()
-        return r.isSuccess() && r.output.contains("started")
-    }
 
-    fun ensureGuardRunning(context: Context): Boolean {
-        if (isScriptDeployed()) {
-            if (isGuardRunning()) return true
-            return startGuardProcess()
-        }
-        return deployAndStart(context)
-    }
 
     // #10: use temp file for base64 decode to avoid ARG_MAX limit
     fun deployAndStart(context: Context): Boolean {

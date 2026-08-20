@@ -208,16 +208,6 @@
                             android:layout_marginTop="0dp" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
-                        <TextView
-                            android:id="@+id/tvAdbShieldHint"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="受主动守护保护，关闭守护后可操作"
-                            android:textColor="@color/teal"
-                            android:textSize="11sp"
-                            android:layout_marginStart="48dp"
-                            android:layout_marginTop="2dp"
-                            android:visibility="gone" />
 
                 <!-- Active shield card -->
                 <com.google.android.material.card.MaterialCardView

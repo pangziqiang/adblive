@@ -1,8 +1,6 @@
 package com.adblive.app.xposed
 
-import android.content.ContentValues
 import android.content.ContentResolver
-import android.net.Uri
 import android.os.Bundle
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedHelpers
