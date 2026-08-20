@@ -13,6 +13,8 @@ android {
         targetSdk = 35
         versionCode = 12
         versionName = "1.1.0"
+        // 只保留默认 + 中文 + 英文，砍掉 AppCompat/Material 自带的大量翻译
+        resConfigs("zh", "en")
     }
 
     buildFeatures {
@@ -34,7 +36,12 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
             signingConfig = signingConfigs.getByName("debug")
         }
     }
