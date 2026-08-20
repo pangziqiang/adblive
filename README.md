@@ -21,21 +21,15 @@ export JAVA_HOME=/usr/local/opt/openjdk@17
 
 ## 安装与使用
 
-1. 安装 APK 后在 KernelSU / Magisk 中授权 root，并重启一次 App 解锁（KernelSU 双模式限制，见 AGENTS.md）
+1. 安装 APK 后在 KernelSU / Magisk 中授权 root，并重启一次 App 解锁（首次授权需重启 App 一次）
 2. 在 LSPosed 中启用本模块（作用域 system + settings + 本应用），重启激活主动守护
 3. 打开被动守护开关部署守护脚本；按需开启开机自启
 
 ## 状态文件（卸载清理清单）
 
-详见 AGENTS.md「卸载清理（无残留）」章节。核心：
+卸载后软件会自动清理全部状态文件与守护进程（无残留）。核心文件：
 
 * 盾状态：/data/system/adblive_shield_armed
 * 守护：/data/adb/service.d/99_adblive_guard.sh
 * 用户意图：/data/adb/adblive_user_disabled_adb
 * 开机自启标记：/data/adb/adblive_boot_enabled
-
-## 文档
-
-* AGENTS.md — 仓库规范与技术设计
-* docs/regression.md — 真机回归测试清单
-* TODO.md — 变更与回归记录
