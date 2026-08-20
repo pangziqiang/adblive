@@ -175,7 +175,11 @@ class MainActivity : AppCompatActivity() {
         Thread {
             try {
                 if (!ShellUtils.probeRoot()) return@Thread
-                if (AdbGuardManager.isGuardRunning()) return@Thread
+                if (AdbGuardManager.isGuardRunning()) {
+                    // B5: guard already up, but refresh script file so upgraded versions take effect
+                    AdbGuardManager.refreshScript(this@MainActivity)
+                    return@Thread
+                }
                 val ok = AdbGuardManager.deployAndStart(this@MainActivity)
                 if (ok) AdbGuardManager.setGuardEnabled(this@MainActivity, true)
                 if (ok) runOnUiThread {
