@@ -98,7 +98,10 @@ object AdbGuardManager {
             "touch " + DISABLED_FILE + " && " +
             (if (safePid.isNotEmpty()) "kill " + safePid + " 2>/dev/null; " else "") +
             "pkill -f '^sh " + SCRIPT_PATH + "' 2>/dev/null; " +
-            "rm -f " + SCRIPT_PATH
+            "rm -f " + SCRIPT_PATH + " && " +
+            "rm -f " + PID_FILE + " && " +
+            "rm -f " + PORT_FILE + " && " +
+            "rm -rf /data/local/tmp/adblive_guard.lock"
         )
         invalidateStateCache()
         return r.isSuccess()
@@ -139,4 +142,3 @@ object AdbGuardManager {
         return if (propPort in 1024..65535) propPort else 5555
     }
 }
-
