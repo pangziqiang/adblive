@@ -63,12 +63,6 @@ echo $$ > /sys/fs/cgroup/cgroup.procs 2>/dev/null
 echo -1000 > /proc/$$/oom_score_adj 2>/dev/null
 renice -n -20 -p $$ >/dev/null 2>&1
 
-SHIELD_ACTIVE=0
-if [ -f /data/system/adblive_shield_armed ]; then
-    SHIELD_ACTIVE=1
-    log -t adblive_guard "shield active at startup, entering standby mode"
-fi
-
 # 事件驱动卸载自毁：app 数据目录被删（=卸载）的瞬间触发清理，消除轮询窗口。
 cat > /data/local/tmp/adblive_uninstalled.sh <<'TRIG'
 #!/system/bin/sh
@@ -105,17 +99,6 @@ restore() {
         log -t adblive_guard "app uninstalled, cleaning up"
         cleanup_guard
         exit 0
-    fi
-    if [ -f /data/system/adblive_shield_armed ]; then
-        if [ "$SHIELD_ACTIVE" = "0" ]; then
-            log -t adblive_guard "shield activated, entering standby"
-            SHIELD_ACTIVE=1
-        fi
-        return
-    fi
-    if [ "$SHIELD_ACTIVE" = "1" ]; then
-        log -t adblive_guard "shield deactivated, resuming active guard"
-        SHIELD_ACTIVE=0
     fi
     if [ -f /data/adb/adblive_user_disabled_adb ]; then
         return
