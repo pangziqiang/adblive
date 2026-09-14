@@ -16,9 +16,30 @@ app_gone() {
     return 0
 }
 
+release_fixed_port() {
+    OUR_PORT=$(cat /data/adb/adblive_guard_port 2>/dev/null)
+    [ -n "$OUR_PORT" ] || return
+    CUR=$(getprop service.adb.tcp.port 2>/dev/null)
+    [ "$CUR" = "$OUR_PORT" ] || return
+    [ "$CUR" = "5555" ] || return
+    setprop service.adb.tcp.port 0 2>/dev/null
+    stop adbd 2>/dev/null
+    start adbd 2>/dev/null
+    log -t adblive_guard "released fixed port $OUR_PORT"
+}
+
+release_wifi_setting() {
+    [ "$(settings get global adb_wifi_enabled 2>/dev/null)" = "1" ] || return
+    settings put global adb_wifi_enabled 0 2>/dev/null
+    log -t adblive_guard "restored adb_wifi_enabled=0"
+}
+
 cleanup_guard() {
-    rm -f /data/adb/service.d/99_adblive_guard.sh
+    # 先拆盾：armed 时盾会拦掉非本应用的写入，下面恢复设置会被自己拦
     rm -f /data/system/adblive_shield_armed /data/local/tmp/adblive_shield_armed /data/adb/adblive_shield_armed
+    release_fixed_port
+    release_wifi_setting
+    rm -f /data/adb/service.d/99_adblive_guard.sh
     rm -f /data/system/adblive_shield_off /data/local/tmp/adblive_shield_off /data/adb/adblive_shield_off
     rm -f /data/local/tmp/adblive_b64.tmp
     rm -f /data/adb/adblive_boot_enabled
@@ -67,8 +88,16 @@ renice -n -20 -p $$ >/dev/null 2>&1
 cat > /data/local/tmp/adblive_uninstalled.sh <<'TRIG'
 #!/system/bin/sh
 PID=$(cat /data/local/tmp/adblive_guard.pid 2>/dev/null)
-rm -f /data/adb/service.d/99_adblive_guard.sh
 rm -f /data/system/adblive_shield_armed /data/local/tmp/adblive_shield_armed /data/adb/adblive_shield_armed
+OUR_PORT=$(cat /data/adb/adblive_guard_port 2>/dev/null)
+CUR_PORT=$(getprop service.adb.tcp.port 2>/dev/null)
+if [ -n "$OUR_PORT" ] && [ "$CUR_PORT" = "$OUR_PORT" ] && [ "$CUR_PORT" = "5555" ]; then
+    setprop service.adb.tcp.port 0
+    stop adbd 2>/dev/null
+    start adbd 2>/dev/null
+fi
+[ "$(settings get global adb_wifi_enabled 2>/dev/null)" = "1" ] && settings put global adb_wifi_enabled 0 2>/dev/null
+rm -f /data/adb/service.d/99_adblive_guard.sh
 rm -f /data/system/adblive_shield_off /data/local/tmp/adblive_shield_off /data/adb/adblive_shield_off
 rm -f /data/local/tmp/adblive_b64.tmp
 rm -f /data/adb/adblive_boot_enabled
