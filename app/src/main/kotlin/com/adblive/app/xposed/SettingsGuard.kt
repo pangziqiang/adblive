@@ -1,11 +1,13 @@
 package com.adblive.app.xposed
 
 import android.content.ContentResolver
+import android.content.Context
 import android.os.Bundle
 import android.os.Binder
 import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedHelpers
 import de.robv.android.xposed.callbacks.XC_LoadPackage.LoadPackageParam
+import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 
 object SettingsGuard {
@@ -28,17 +30,52 @@ object SettingsGuard {
 
     fun hookSystemServer(lpparam: LoadPackageParam) {
         if (!registeredSys.compareAndSet(false, true)) return
-        try {
-            val appCtx = de.robv.android.xposed.XposedHelpers.callStaticMethod(
-                de.robv.android.xposed.XposedHelpers.findClass("android.app.ActivityThread", null),
-                "currentApplication") as? android.content.Context
-            ourUid = appCtx?.packageManager?.getApplicationInfo(OUR_PACKAGE, 0)?.uid ?: 0
-        } catch (_: Throwable) { }
+        ourUid = resolveOurUid()
         Entry.log("SettingsGuard ourUid=" + ourUid)
         Entry.log("SettingsGuard mounting system_server guards")
         hookGlobalPutInt()
         hookGlobalPutString()
         hookTransportCall(lpparam.classLoader)
+    }
+
+    /**
+     * 解析本应用 uid。system_server 内没有 Application，
+     * ActivityThread.currentApplication() 恒为 null —— 曾因此 ourUid=0，
+     * 盾把本应用自己的写入也一并拦截（App 内关不掉无线 ADB）。
+     * 这里用系统上下文 + 包列表多路兜底。
+     */
+    private fun resolveOurUid(): Int {
+        try {
+            val atCls = XposedHelpers.findClass("android.app.ActivityThread", null)
+            val at = XposedHelpers.callStaticMethod(atCls, "currentActivityThread")
+            if (at != null) {
+                val sysCtx = try {
+                    XposedHelpers.callMethod(at, "getSystemContext") as? Context
+                } catch (_: Throwable) { null }
+                val uidSys = sysCtx?.packageManager?.getApplicationInfo(OUR_PACKAGE, 0)?.uid ?: 0
+                if (uidSys != 0) return uidSys
+
+                val appCtx = try {
+                    XposedHelpers.callMethod(at, "getApplication") as? Context
+                } catch (_: Throwable) { null }
+                val uidApp = appCtx?.packageManager?.getApplicationInfo(OUR_PACKAGE, 0)?.uid ?: 0
+                if (uidApp != 0) return uidApp
+            }
+        } catch (_: Throwable) { }
+
+        try {
+            File("/data/system/packages.list").useLines { lines ->
+                for (line in lines) {
+                    val parts = line.split(' ')
+                    if (parts.size >= 2 && parts[0] == OUR_PACKAGE) {
+                        val uid = parts[1].trim().toIntOrNull() ?: 0
+                        if (uid != 0) return uid
+                    }
+                }
+            }
+        } catch (_: Throwable) { }
+
+        return 0
     }
 
     fun hookSettings(lpparam: LoadPackageParam) {
