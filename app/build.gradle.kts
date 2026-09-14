@@ -11,8 +11,8 @@ android {
         applicationId = "com.adblive.app"
         minSdk = 30
         targetSdk = 35
-        versionCode = 13
-        versionName = "1.1.1"
+    versionCode = 14
+    versionName = "1.1.2"
         // 只保留默认 + 中文 + 英文，砍掉 AppCompat/Material 自带的大量翻译
         resConfigs("zh", "en")
     }
