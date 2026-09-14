@@ -471,22 +471,24 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun performToggle(on: Boolean, seq: Int) {
-        val secureOk = if (rootOk) true else putSecureAdb(on)
         if (on) {
             // User wants ADB on: clear intent file so guard resumes
             AdbGuardManager.clearUserDisabledAdb()
+            val secureOk = writeAdbWifiSetting(true)
             if (rootOk) {
                 ShellUtils.executeSu("setprop service.adb.tcp.port 5555")
-                ShellUtils.executeSu("settings put global adb_wifi_enabled 1")
                 ShellUtils.executeSu("stop adbd && start adbd")
             }
             runOnUiThread { appendLog(if (secureOk) "adb enabling on port 5555" else "adb enable failed (no permission)") }
         } else {
             // User wants ADB off: write intent file so guard won't restore
             AdbGuardManager.writeUserDisabledAdb()
+            // 必须用本应用自己的 uid 写：盾 armed 时只放行本应用，root/su 写入会被盾拦
+            val secureOk = writeAdbWifiSetting(false)
             if (rootOk) {
                 ShellUtils.executeSu("setprop service.adb.tcp.port 0")
-                putSecureAdb(false)
+                // adbd 只在启动时读端口属性，不重启的话 5555 监听仍然在（"假关闭"）
+                ShellUtils.executeSu("stop adbd && start adbd")
             }
             runOnUiThread { appendLog(if (secureOk) "adb disabled" else "adb disable failed (no permission)") }
         }
@@ -540,6 +542,15 @@ class MainActivity : AppCompatActivity() {
         return try {
             Settings.Global.putString(contentResolver, "adb_wifi_enabled", if (on) "1" else "0")
         } catch (_: Exception) { false }
+    }
+
+    /** 先用自己的 uid 写（盾放行本应用）；失败且有 root 时退回 su。 */
+    private fun writeAdbWifiSetting(on: Boolean): Boolean {
+        if (putSecureAdb(on)) return true
+        if (!rootOk) return false
+        return ShellUtils.executeSu(
+            "settings put global adb_wifi_enabled " + (if (on) "1" else "0")
+        ).isSuccess()
     }
 
     private fun getSecureAdb(): ShellUtils.Result {
