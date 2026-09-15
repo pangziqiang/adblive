@@ -259,6 +259,13 @@ class MainActivity : AppCompatActivity() {
                         "rm -f /data/local/tmp/adblive_shield_armed /data/local/tmp/adblive_shield_off " +
                         "/data/adb/adblive_shield_armed /data/adb/adblive_shield_off"
                     )
+                    // 旧版本的 inotifyd 监视进程只删了 PID 文件没杀进程，会变僵尸
+                    ShellUtils.executeSu("pkill -9 -f '[a]dblive_uninstalled'")
+                }
+                // 固定端口还在就必须让卸载清理器在位（没开被动守护时唯一的兜底）
+                if (rootNow && adbPortOut.output.trim() == "5555" && !guardRunning &&
+                    !AdbGuardManager.isUninstallCleanerAlive()) {
+                    AdbGuardManager.ensureUninstallCleaner(this)
                 }
                 val shieldActual = ShieldStateFile.exists()
                 adbOn = adbNow
@@ -478,6 +485,8 @@ class MainActivity : AppCompatActivity() {
             if (rootOk) {
                 ShellUtils.executeSu("setprop service.adb.tcp.port 5555")
                 ShellUtils.executeSu("stop adbd && start adbd")
+                // 固定端口已被设置：确保卸载清理器在位（没开被动守护时的兜底）
+                AdbGuardManager.ensureUninstallCleaner(this)
             }
             runOnUiThread { appendLog(if (secureOk) "adb enabling on port 5555" else "adb enable failed (no permission)") }
         } else {
@@ -489,6 +498,8 @@ class MainActivity : AppCompatActivity() {
                 ShellUtils.executeSu("setprop service.adb.tcp.port 0")
                 // adbd 只在启动时读端口属性，不重启的话 5555 监听仍然在（"假关闭"）
                 ShellUtils.executeSu("stop adbd && start adbd")
+                // 固定端口已释放，清理器不再需要（保持零残留）
+                AdbGuardManager.removeUninstallCleaner()
             }
             runOnUiThread { appendLog(if (secureOk) "adb disabled" else "adb disable failed (no permission)") }
         }

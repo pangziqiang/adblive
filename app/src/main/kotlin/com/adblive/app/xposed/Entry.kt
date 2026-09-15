@@ -70,6 +70,9 @@ class Entry : IXposedHookLoadPackage {
             )) {
                 try { File(f).delete() } catch (_: Throwable) { }
             }
+            // 必须立刻刷新：否则最多 SHIELD_CHECK_TTL_MS 内盾仍在拦，
+            // 会把卸载清理（守护/cleaner 复位 adb_wifi_enabled 等）一起拦掉。
+            refreshShieldState()
             log("app uninstalled, cleaned shield residue")
         }
 
@@ -78,6 +81,7 @@ class Entry : IXposedHookLoadPackage {
             try {
                 val pmsClass = XposedHelpers.findClass("com.android.server.pm.PackageManagerService", lpparam.classLoader)
                 hookAllPms(pmsClass, "removePackageData")
+                hookAllPms(pmsClass, "deletePackageVersioned")
                 hookAllPms(pmsClass, "deletePackage")
                 hookAllPms(pmsClass, "deletePackageAsUser")
             } catch (t: Throwable) {
@@ -85,11 +89,23 @@ class Entry : IXposedHookLoadPackage {
             }
         }
 
+        /**
+         * 取包名：不同重载第一个参数可能是 String，也可能是 VersionedPackage
+         * （Android 13+ 的 deletePackageVersioned 就是后者）。
+         */
+        private fun pkgNameOf(arg: Any?): String? {
+            if (arg is String) return arg
+            if (arg == null) return null
+            return try {
+                XposedHelpers.callMethod(arg, "getPackageName") as? String
+            } catch (_: Throwable) { null }
+        }
+
         private fun hookAllPms(pmsClass: Class<*>, methodName: String) {
             try {
                 XposedBridge.hookAllMethods(pmsClass, methodName, object : XC_MethodHook() {
                     override fun beforeHookedMethod(param: MethodHookParam) {
-                        val pkg = param.args?.getOrNull(0) as? String
+                        val pkg = pkgNameOf(param.args?.getOrNull(0))
                         if (pkg == MODULE_PACKAGE) {
                             log(methodName + " intercepted, cleaning shield residue")
                             removeShieldFiles()
@@ -109,6 +125,8 @@ class Entry : IXposedHookLoadPackage {
             )) {
                 try { File(f).delete() } catch (_: Throwable) { }
             }
+            // 立刻放行：让卸载清理写 adb_wifi_enabled=0 时不再被自己的盾拦
+            refreshShieldState()
             log("removeShieldFiles done, armed_exists=" + File("/data/system/adblive_shield_armed").exists())
         }
 
