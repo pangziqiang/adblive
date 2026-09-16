@@ -14,8 +14,27 @@ object ShellUtils {
 
     @Volatile private var workingSuPath: List<String>? = null
 
+    // 部分厂商 ROM 的 libc 在进程启动时读 persist.vendor.* 被 SELinux 拒绝，
+    // 会往 stderr 打 "Access denied finding property ..."。executeSu 把 stderr
+    // 合并进 stdout，调用方若用 trim()=="5555" 会把“已打开”误判成“关闭”。
+    private val LIBC_PROP_NOISE = Regex(
+        """(?:libc:\s*)?Access denied finding\s*property\s*"[^"]*"\s*""",
+        RegexOption.IGNORE_CASE
+    )
+
     data class Result(val exitCode: Int, val output: String) {
         fun isSuccess() = exitCode == 0
+
+        /** 去掉厂商 libc 噪音后的最后一个有效字段，用于解析 getprop / settings / pid。 */
+        fun scalar(): String {
+            val stripped = LIBC_PROP_NOISE.replace(output, "\n")
+            val last = stripped.lineSequence()
+                .map { it.trim() }
+                .filter { it.isNotEmpty() && !it.startsWith("libc:", ignoreCase = true) }
+                .lastOrNull()
+                ?: return ""
+            return last.split(Regex("\\s+")).last()
+        }
     }
 
     fun executeSu(command: String, timeoutMs: Long = 2000): Result {

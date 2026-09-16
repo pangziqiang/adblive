@@ -240,12 +240,7 @@ class MainActivity : AppCompatActivity() {
                                  else getSecureAdb()
                 val adbPortOut = if (rootNow) ShellUtils.executeSu("getprop service.adb.tcp.port")
                                  else adbWifiOut
-                val adbNow = if (rootNow) {
-                    adbPortOut.isSuccess() && adbPortOut.output.trim() == "5555" &&
-                    adbWifiOut.isSuccess() && adbWifiOut.output.trim() == "1"
-                } else {
-                    adbWifiOut.isSuccess() && adbWifiOut.output.trim() == "1"
-                }
+                val adbNow = wirelessAdbOn(adbPortOut, adbWifiOut, rootNow)
 
                 rootOk = rootNow
                 xposedOk = xposedNow
@@ -263,7 +258,7 @@ class MainActivity : AppCompatActivity() {
                     ShellUtils.executeSu("pkill -9 -f '[a]dblive_uninstalled'")
                 }
                 // 固定端口还在就必须让卸载清理器在位（没开被动守护时唯一的兜底）
-                if (rootNow && adbPortOut.output.trim() == "5555" && !guardRunning &&
+                if (rootNow && adbPortOut.scalar() == "5555" && !guardRunning &&
                     !AdbGuardManager.isUninstallCleanerAlive()) {
                     AdbGuardManager.ensureUninstallCleaner(this)
                 }
@@ -510,12 +505,7 @@ class MainActivity : AppCompatActivity() {
         val adbR = if (rootOk) ShellUtils.executeSu("getprop service.adb.tcp.port")
                    else adbW
         val ip = getLocalIp()
-        adbOn = if (rootOk) {
-            adbR.isSuccess() && adbR.output.trim() == "5555" &&
-            adbW.isSuccess() && adbW.output.trim() == "1"
-        } else {
-            adbW.isSuccess() && adbW.output.trim() == "1"
-        }
+        adbOn = wirelessAdbOn(adbR, adbW, rootOk)
         runOnUiThread {
             ipText = ip
             tvIp.text = ip.ifEmpty { "--" }
@@ -523,8 +513,15 @@ class MainActivity : AppCompatActivity() {
             swAdb.isChecked = adbOn
             cardAdb.strokeColor = getColor(if (adbOn) R.color.card_border_on else R.color.card_border_off)
             tintCircle(icAdb, adbOn)
-            appendLog("adb port now " + (adbR.output.trim().ifEmpty { "0" }))
+            appendLog("adb port now " + (adbR.scalar().ifEmpty { "0" }))
         }
+    }
+
+    /** 有 root 时必须端口=5555 且 wifi 开关=1；无 root 时只看 wifi 开关。 */
+    private fun wirelessAdbOn(portOut: ShellUtils.Result, wifiOut: ShellUtils.Result, hasRoot: Boolean): Boolean {
+        val wifiOn = wifiOut.isSuccess() && wifiOut.scalar() == "1"
+        if (!hasRoot) return wifiOn
+        return portOut.isSuccess() && portOut.scalar() == "5555" && wifiOn
     }
 
     private fun showRootRequiredHint() {

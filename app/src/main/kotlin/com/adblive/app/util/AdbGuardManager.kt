@@ -64,13 +64,13 @@ object AdbGuardManager {
 
     fun isGuardRunning(): Boolean {
         val r = ShellUtils.executeSu("cat " + PID_FILE + " 2>/dev/null")
-        val pid = r.output.trim()
+        val pid = r.scalar()
         if (pid.isNotEmpty() && pid.all { it.isDigit() }) {
             val alive = ShellUtils.executeSu("kill -0 " + pid + " 2>&1; echo EXIT=$?")
             if (alive.output.contains("EXIT=0")) return true
         }
         val pg = ShellUtils.executeSu("pgrep -f '99_adblive_guard\\.sh' 2>/dev/null")
-        return pg.isSuccess() && pg.output.trim().isNotEmpty()
+        return pg.isSuccess() && pg.scalar().isNotEmpty()
     }
 
 
@@ -121,7 +121,7 @@ object AdbGuardManager {
             f.parentFile?.mkdirs()
             f.writeText("1")
         } catch (_: Exception) { }
-        val pid = ShellUtils.executeSu("cat " + PID_FILE + " 2>/dev/null").output.trim()
+        val pid = ShellUtils.executeSu("cat " + PID_FILE + " 2>/dev/null").scalar()
         val safePid = if (pid.isNotEmpty() && pid.all { it.isDigit() }) pid else ""
         val r = ShellUtils.executeSu(
             "touch " + DISABLED_FILE + " && " +
@@ -139,7 +139,7 @@ object AdbGuardManager {
     )
         invalidateStateCache()
         // 守护停了，但 App 设的固定端口可能还在，交给一次性清理器兜底（卸载后零残留）
-        val port = ShellUtils.executeSu("getprop service.adb.tcp.port").output.trim()
+        val port = ShellUtils.executeSu("getprop service.adb.tcp.port").scalar()
         if (port == "5555") ensureUninstallCleaner(context) else removeUninstallCleaner()
         return r.isSuccess()
     }
@@ -227,12 +227,12 @@ object AdbGuardManager {
     fun readCurrentPort(): Int {
         // Try port file first (most reliable if watchdog set it)
         val fileR = ShellUtils.executeSu("cat " + PORT_FILE + " 2>/dev/null")
-        val filePort = fileR.output.trim().toIntOrNull()
+        val filePort = fileR.scalar().toIntOrNull()
         if (filePort != null && filePort in 1024..65535) return filePort
 
         // Fallback to getprop
         val propR = ShellUtils.executeSu("getprop service.adb.tcp.port")
-        val propPort = propR.output.trim().toIntOrNull() ?: 0
+        val propPort = propR.scalar().toIntOrNull() ?: 0
         return if (propPort in 1024..65535) propPort else 5555
     }
 }
